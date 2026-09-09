@@ -522,7 +522,7 @@ export default function ValidatorPage() {
       if (checkVis < 1000 && !checkWx.includes("FG")) {
         warnings.push({
           type: "warning",
-          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG). Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG.`,
+          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG) . Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG. Kalau ini hujan lebat, pastikan ganti cuaca menjadi RA/+RA/TSRA/+TSRA dan ada awan CB. Tapi kalau masih yakin seperti kondisi sebelumnya, ya lanjut aja.`,
         });
       }
 

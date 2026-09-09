@@ -970,7 +970,7 @@ export default function GeneratorPage() {
 
     if (wx && wx !== "NSW" && !hasBecmg) {
       warnings.push(
-        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif).`,
+        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Tapi kalau memang yakin nonstop, ya lanjut aja.`,
       );
     }
     if (wx.includes("TS")) {
