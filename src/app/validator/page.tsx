@@ -324,7 +324,7 @@ export default function ValidatorPage() {
     if (mainWx && mainWx !== "NSW" && !hasBecmg) {
       warnings.push({
         type: "warning",
-        message: `Meteorological Warning (Utama): Cuaca dasar (Base) disandikan '${mainWx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif).`,
+        message: `Meteorological Warning (Utama): Cuaca dasar (Base) disandikan '${mainWx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Kalau yakin ya lanjut aja.`,
       });
     }
 
@@ -332,6 +332,13 @@ export default function ValidatorPage() {
       warnings.push({
         type: "warning",
         message: `Meteorological Warning (Utama): Ada sandi petir (${mainWx}) tapi kok tidak ada awan CB? Yakin petir bisa terjadi tanpa awan Cumulonimbus?`,
+      });
+    }
+
+    if (mainVis < 1000 && !mainWx.includes("FG")) {
+      warnings.push({
+        type: "warning",
+        message: `Meteorological Warning (Utama): Visibilitas sangat rendah (${mainVisStr}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan sangat lebat. Yakin cuaca yang disandikan adalah '${mainWx || "tidak ada"}'? Kalau yakin ya lanjut aja.`,
       });
     }
 
@@ -509,6 +516,13 @@ export default function ValidatorPage() {
         warnings.push({
           type: "warning",
           message: `Meteorological Warning (${indicator}): Terdapat sandi petir (${checkWx}) tapi awan yang sedang aktif bukan CB. Yakin petir terjadi tanpa awan Cumulonimbus? Pastikan untuk merubah tipe awan menjadi CB.`,
+        });
+      }
+
+      if (checkVis < 1000 && !checkWx.includes("FG")) {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG). Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG.`,
         });
       }
 

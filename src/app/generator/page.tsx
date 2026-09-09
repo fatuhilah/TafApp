@@ -959,14 +959,18 @@ export default function GeneratorPage() {
     return "";
   };
 
-  const getBaseWarnings = (wx: string, baseClouds: any[], cgList: any[]) => {
+  const getBaseWarnings = (
+    vis: string,
+    wx: string,
+    baseClouds: any[],
+    cgList: any[],
+  ) => {
     const warnings = [];
-    // Cek apakah ada BECMG. Jika ada, berarti kondisi dasar tidak berlangsung 24 jam penuh.
     const hasBecmg = cgList.some((cg) => cg.indicator === "BECMG");
 
     if (wx && wx !== "NSW" && !hasBecmg) {
       warnings.push(
-        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Kalau yakin ya lanjut aja.`,
+        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif).`,
       );
     }
     if (wx.includes("TS")) {
@@ -977,31 +981,55 @@ export default function GeneratorPage() {
         );
       }
     }
+
+    // ATURAN BARU: VISIBILITAS < 1000m TANPA FG
+    const visNum = parseInt(vis);
+    if (visNum < 1000 && !wx.includes("FG")) {
+      warnings.push(
+        `Meteorological Warning: Visibilitas sangat rendah (${visNum}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan lebat. Yakin cuaca yang disandikan bukan FG?`,
+      );
+    }
+
     return warnings;
   };
 
-  const getCgWarnings = (cg: any, effClouds: any[]) => {
+  const getCgWarnings = (cg: any, eff: any) => {
     const warnings = [];
-    // Warning jika BECMG digunakan untuk cuaca yang menetap sampai akhir TAF
+
     if (cg.indicator === "BECMG" && cg.hasWx && cg.wx && cg.wx !== "NSW") {
       warnings.push(
-        `Meteorological Warning: Yakin nih kondisi cuaca '${cg.wx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
+        `Meteorological Warning: Yakin nih kondisi cuaca '${cg.wx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO).`,
       );
     }
-    // Warning jika ada petir di Change Group tapi tidak ada awan CB yang aktif
-    if (cg.hasWx && cg.wx.includes("TS")) {
+
+    const checkWx =
+      cg.hasWx && cg.wx !== "" ? (cg.wx === "NSW" ? "" : cg.wx) : eff.effWx;
+    const checkVis =
+      cg.hasVis && cg.visibility !== ""
+        ? parseInt(cg.visibility)
+        : parseInt(eff.effVis) || 9999;
+
+    if (checkWx.includes("TS")) {
       let hasCb = false;
       if (cg.hasCloud && cg.cloudAmount !== "NSC") {
         hasCb = cg.cloudType === "CB";
       } else if (!cg.hasCloud) {
-        hasCb = effClouds.some((c: any) => c.type === "CB");
+        hasCb = eff.effClouds.some((c: any) => c.type === "CB");
       }
       if (!hasCb) {
         warnings.push(
-          `Meteorological Warning: Terdapat sandi petir (${cg.wx}) tapi tidak ada awan CB yang aktif. Pastikan menambahkan/mengubah tipe awan menjadi CB.`,
+          `Meteorological Warning: Terdapat sandi petir (${checkWx}) tapi tidak ada awan CB yang aktif. Pastikan menambahkan/mengubah tipe awan menjadi CB.`,
         );
       }
     }
+
+    // ATURAN BARU: VISIBILITAS < 1000m TANPA FG DI CHANGE GROUP
+    if (checkVis < 1000 && !checkWx.includes("FG")) {
+      warnings.push(
+        `Meteorological Warning (${cg.indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya disebabkan oleh kabut radiasi/embun (FG). Yakin fenomena saat ini masih '${checkWx || "tidak ada"}'? Jika ini embun, pastikan ganti cuaca menjadi FG. Kalau ini hujan lebat, pastikan ganti cuaca menjadi RA/+RA/TSRA/+TSRA dan ada awan CB. Tapi kalau masih yakin seperti kondisi sebelumnya, ya lanjut aja.`,
+      );
+    }
+
     return warnings;
   };
 
@@ -1577,17 +1605,20 @@ export default function GeneratorPage() {
                     <span>{validateWxVis(weather.wx, weather.visibility)}</span>
                   </div>
                 )}
-                {getBaseWarnings(weather.wx, clouds, changeGroups).map(
-                  (warn, idx) => (
-                    <div
-                      key={`base-warn-${idx}`}
-                      className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
-                    >
-                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
-                      <span>{warn}</span>
-                    </div>
-                  ),
-                )}
+                {getBaseWarnings(
+                  weather.visibility,
+                  weather.wx,
+                  clouds,
+                  changeGroups,
+                ).map((warn, idx) => (
+                  <div
+                    key={`base-warn-${idx}`}
+                    className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
+                  >
+                    <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
+                    <span>{warn}</span>
+                  </div>
+                ))}
 
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <div className="flex justify-between items-center mb-2">
@@ -1990,7 +2021,7 @@ export default function GeneratorPage() {
                         </span>
                       </div>
                     )}
-                  {getCgWarnings(cg, eff.effClouds).map((warn, wIdx) => (
+                  {getCgWarnings(cg, eff).map((warn, wIdx) => (
                     <div
                       key={`cg-warn-${wIdx}`}
                       className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
