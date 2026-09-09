@@ -319,22 +319,19 @@ export default function ValidatorPage() {
         message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
       });
     }
+    const hasBecmg = text.includes("BECMG");
+
+    if (mainWx && mainWx !== "NSW" && !hasBecmg) {
+      warnings.push({
+        type: "warning",
+        message: `Meteorological Warning (Utama): Cuaca dasar (Base) disandikan '${mainWx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif).`,
+      });
+    }
+
     if (mainWx.includes("TS") && mainCloud.typ !== "CB") {
       warnings.push({
         type: "warning",
         message: `Meteorological Warning (Utama): Ada sandi petir (${mainWx}) tapi kok tidak ada awan CB? Yakin petir bisa terjadi tanpa awan Cumulonimbus?`,
-      });
-    }
-
-    if (
-      mainWx.includes("TS") ||
-      mainWx === "RA" ||
-      mainWx === "+RA" ||
-      mainWx === "DZ"
-    ) {
-      warnings.push({
-        type: "warning",
-        message: `Meteorological Warning (Utama): Cuaca dasar (Base) disandikan '${mainWx}'. Yakin nih fenomena tersebut akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Normalnya petir/hujan disandikan di dalam TEMPO/BECMG).`,
       });
     }
 
@@ -501,6 +498,13 @@ export default function ValidatorPage() {
           message: `SOP Error (${indicator}): Cuaca ${checkWx} (Lithometeor) tidak valid pada visibilitas ${checkVis}m (wajib <= 5000m). Gunakan NSW untuk membersihkannya jika jarak pandang membaik.`,
         });
       }
+      if (indicator === "BECMG" && cgWx && cgWx !== "NSW") {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Yakin nih kondisi cuaca '${cgWx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
+        });
+      }
+
       if (checkWx.includes("TS") && effCloud.typ !== "CB") {
         warnings.push({
           type: "warning",

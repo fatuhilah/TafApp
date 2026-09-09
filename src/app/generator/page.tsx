@@ -959,11 +959,14 @@ export default function GeneratorPage() {
     return "";
   };
 
-  const getBaseWarnings = (wx: string, baseClouds: any[]) => {
+  const getBaseWarnings = (wx: string, baseClouds: any[], cgList: any[]) => {
     const warnings = [];
-    if (wx && wx !== "NSW") {
+    // Cek apakah ada BECMG. Jika ada, berarti kondisi dasar tidak berlangsung 24 jam penuh.
+    const hasBecmg = cgList.some((cg) => cg.indicator === "BECMG");
+
+    if (wx && wx !== "NSW" && !hasBecmg) {
       warnings.push(
-        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Biasanya disandikan di dalam TEMPO/BECMG).`,
+        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Kalau yakin ya lanjut aja.`,
       );
     }
     if (wx.includes("TS")) {
@@ -971,6 +974,31 @@ export default function GeneratorPage() {
       if (!hasCb) {
         warnings.push(
           `Meteorological Warning: Terdapat sandi petir (${wx}) tapi tidak ada awan CB di Base Condition.`,
+        );
+      }
+    }
+    return warnings;
+  };
+
+  const getCgWarnings = (cg: any, effClouds: any[]) => {
+    const warnings = [];
+    // Warning jika BECMG digunakan untuk cuaca yang menetap sampai akhir TAF
+    if (cg.indicator === "BECMG" && cg.hasWx && cg.wx && cg.wx !== "NSW") {
+      warnings.push(
+        `Meteorological Warning: Yakin nih kondisi cuaca '${cg.wx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
+      );
+    }
+    // Warning jika ada petir di Change Group tapi tidak ada awan CB yang aktif
+    if (cg.hasWx && cg.wx.includes("TS")) {
+      let hasCb = false;
+      if (cg.hasCloud && cg.cloudAmount !== "NSC") {
+        hasCb = cg.cloudType === "CB";
+      } else if (!cg.hasCloud) {
+        hasCb = effClouds.some((c: any) => c.type === "CB");
+      }
+      if (!hasCb) {
+        warnings.push(
+          `Meteorological Warning: Terdapat sandi petir (${cg.wx}) tapi tidak ada awan CB yang aktif. Pastikan menambahkan/mengubah tipe awan menjadi CB.`,
         );
       }
     }
@@ -1549,15 +1577,17 @@ export default function GeneratorPage() {
                     <span>{validateWxVis(weather.wx, weather.visibility)}</span>
                   </div>
                 )}
-                {getBaseWarnings(weather.wx, clouds).map((warn, idx) => (
-                  <div
-                    key={idx}
-                    className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
-                  >
-                    <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
-                    <span>{warn}</span>
-                  </div>
-                ))}
+                {getBaseWarnings(weather.wx, clouds, changeGroups).map(
+                  (warn, idx) => (
+                    <div
+                      key={`base-warn-${idx}`}
+                      className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
+                    >
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
+                      <span>{warn}</span>
+                    </div>
+                  ),
+                )}
 
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <div className="flex justify-between items-center mb-2">
@@ -1960,6 +1990,15 @@ export default function GeneratorPage() {
                         </span>
                       </div>
                     )}
+                  {getCgWarnings(cg, eff.effClouds).map((warn, wIdx) => (
+                    <div
+                      key={`cg-warn-${wIdx}`}
+                      className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
+                    >
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
+                      <span>{warn}</span>
+                    </div>
+                  ))}
                 </div>
               );
             })}
