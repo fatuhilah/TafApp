@@ -1114,28 +1114,51 @@ export default function GeneratorPage() {
     cAmt: string,
     cHt: string,
     cTyp: string,
-    baseClouds: any[],
+    effClouds: any[],
   ) => {
     if (!cAmt) return "";
-    const isIdentical = baseClouds.some(
+
+    // Cek apakah persis sama dengan sebelumnya
+    const isIdentical = effClouds.some(
       (bc) => bc.amount === cAmt && bc.height === cHt && bc.type === cTyp,
     );
     if (isIdentical)
-      return "SOP Error: Awan sama persis dengan Base Forecast (tidak ada perubahan).";
+      return "SOP Error: Awan sama persis dengan kondisi sebelumnya (tidak ada perubahan).";
 
+    // Pengecualian mutlak untuk awan konvektif
     if (cTyp === "CB" || cTyp === "TCU") return "";
-    const baseHasCbTcu = baseClouds.some(
+    const baseHasCbTcu = effClouds.some(
       (bc) => bc.type === "CB" || bc.type === "TCU",
     );
     if (baseHasCbTcu) return "";
 
     const ht = parseInt(cHt) || 0;
-    const thresholds = [1, 2, 5, 10, 15];
-    if (thresholds.includes(ht)) return "";
-    if (ht < 15 && (cAmt === "BKN" || cAmt === "OVC")) return "";
-    if (cAmt === "NSC") return "";
+    const bAmt = effClouds[0]?.amount || "NSC";
+    const bHt = parseInt(effClouds[0]?.height) || 0;
 
-    return "SOP Error: Perubahan awan tidak melintasi threshold batas (100, 200, 500, 1000, 1500 ft) atau BKN/OVC di bawah 1500 ft.";
+    let isValid = false;
+
+    // Aturan 1: Perubahan signifikan pada jumlah awan (BKN/OVC vs FEW/SCT) jika berada di bawah 1500 ft
+    const grpB = ["BKN", "OVC"];
+    if (ht < 15 || bHt < 15) {
+      if (grpB.includes(bAmt) !== grpB.includes(cAmt)) isValid = true;
+    }
+
+    // Aturan 2: Melintasi threshold ketinggian awan (100, 200, 500, 1000, 1500 ft)
+    const thresholds = [1, 2, 5, 10, 15];
+    if (bHt < ht) {
+      if (thresholds.some((t) => bHt < t && t <= ht)) isValid = true;
+    } else if (bHt > ht) {
+      if (thresholds.some((t) => bHt > t && t >= ht)) isValid = true;
+    }
+
+    // Aturan 3: Perubahan menjadi langit bersih
+    if (cAmt === "NSC") isValid = true;
+
+    if (!isValid)
+      return "SOP Error: Perubahan awan tidak melintasi threshold batas (100, 200, 500, 1000, 1500 ft) atau tidak merubah kategori BKN/OVC di bawah 1500 ft.";
+
+    return "";
   };
 
   // --- PROGRESSIVE WX/VIS CHECKER ---
