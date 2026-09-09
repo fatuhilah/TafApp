@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Loader2, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -85,10 +87,22 @@ export default function Chatbot() {
               key={idx}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
+              {/* Pembungkus Bubble Chat dengan batas maksimal lebar dan break-words */}
               <div
-                className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${msg.role === "user" ? "bg-blue-600 text-white rounded-br-none" : "bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm"}`}
+                className={`max-w-[90%] p-3.5 rounded-2xl shadow-sm break-words overflow-hidden ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-br-none"
+                    : "bg-white border border-slate-200 text-slate-800 rounded-bl-none"
+                }`}
               >
-                {msg.text}
+                {/* Teks Markdown di dalamnya */}
+                <div
+                  className={`prose prose-sm leading-relaxed max-w-none ${msg.role === "user" ? "prose-invert" : "prose-blue"}`}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.text}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           ))}
@@ -107,7 +121,7 @@ export default function Chatbot() {
           <input
             type="text"
             className="flex-1 border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="Tanya soal cuaca atau SOP..."
+            placeholder="Ketik pesan di sini..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
