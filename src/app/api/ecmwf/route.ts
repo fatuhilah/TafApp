@@ -79,13 +79,19 @@ export async function GET(request: Request) {
 
       // ANGIN
       let windDirStr = "VRB";
-      if (!isNaN(windDirArr[i])) {
-        let dirRounded = Math.round(windDirArr[i] / 10) * 10;
+      const currentWindDir = windDirArr?.[i];
+      if (
+        currentWindDir !== undefined &&
+        currentWindDir !== null &&
+        !isNaN(currentWindDir)
+      ) {
+        let dirRounded = Math.round(currentWindDir / 10) * 10;
         if (dirRounded === 0) dirRounded = 360;
         windDirStr = dirRounded.toString().padStart(3, "0");
       }
-      const spdNum = Math.round(windSpdArr[i]);
-      const gustNum = Math.round(windGustArr[i]);
+
+      const spdNum = Math.round(windSpdArr?.[i] ?? 0);
+      const gustNum = Math.round(windGustArr?.[i] ?? 0);
       const windSpdStr = spdNum.toString().padStart(2, "0");
 
       let windStr = `${windDirStr}${windSpdStr}`;
@@ -94,7 +100,7 @@ export async function GET(request: Request) {
       windStr += "KT";
 
       // VISIBILITAS
-      const visRaw = visArr[i];
+      const visRaw = visArr?.[i] ?? 9999;
       let vis = "9999";
       if (visRaw < 10000) {
         if (visRaw < 800)
@@ -106,9 +112,9 @@ export async function GET(request: Request) {
       }
 
       // CUACA & CAPE
-      const weatherCode = wxCodeArr[i];
-      const cape = Math.round(capeArr[i]);
-      const rain = rainArr[i];
+      const weatherCode = wxCodeArr?.[i] ?? 0;
+      const cape = Math.round(capeArr?.[i] ?? 0);
+      const rain = rainArr?.[i] ?? 0;
       let wx = "";
       if (cape > 1000 && rain > 0) wx = "TSRA";
       else if (weatherCode === 45 || weatherCode === 48) wx = "FG";
@@ -122,7 +128,7 @@ export async function GET(request: Request) {
       else if (visRaw >= 1000 && visRaw < 5000) wx = "BR";
 
       // AWAN
-      const cloudLow = cloudLowArr[i];
+      const cloudLow = cloudLowArr?.[i] ?? 0;
       let cloud = "NSC";
       if (cloudLow > 87) cloud = "OVC015";
       else if (cloudLow > 50) cloud = "BKN015";
