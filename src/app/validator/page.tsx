@@ -25,6 +25,7 @@ export default function ValidatorPage() {
     }
 
     const errors: { type: string; message: string }[] = [];
+    const warnings: { type: string; message: string }[] = [];
     let originalText = rawTaf.toUpperCase().replace(/\s+/g, " ").trim();
 
     // --- MENGABAIKAN HEADER WMO & MENANGKAP INDIKATOR BBB ---
@@ -318,6 +319,24 @@ export default function ValidatorPage() {
         message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
       });
     }
+    if (mainWx.includes("TS") && mainCloud.typ !== "CB") {
+      warnings.push({
+        type: "warning",
+        message: `Meteorological Warning (Utama): Ada sandi petir (${mainWx}) tapi kok tidak ada awan CB? Yakin petir bisa terjadi tanpa awan Cumulonimbus?`,
+      });
+    }
+
+    if (
+      mainWx.includes("TS") ||
+      mainWx === "RA" ||
+      mainWx === "+RA" ||
+      mainWx === "DZ"
+    ) {
+      warnings.push({
+        type: "warning",
+        message: `Meteorological Warning (Utama): Cuaca dasar (Base) disandikan '${mainWx}'. Yakin nih fenomena tersebut akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Normalnya petir/hujan disandikan di dalam TEMPO/BECMG).`,
+      });
+    }
 
     // 4. VALIDASI STRICT CHANGE GROUPS DENGAN PROGRESSIVE STATE ENGINE
     const visThresholds = [150, 350, 600, 800, 1500, 3000, 5000];
@@ -482,6 +501,12 @@ export default function ValidatorPage() {
           message: `SOP Error (${indicator}): Cuaca ${checkWx} (Lithometeor) tidak valid pada visibilitas ${checkVis}m (wajib <= 5000m). Gunakan NSW untuk membersihkannya jika jarak pandang membaik.`,
         });
       }
+      if (checkWx.includes("TS") && effCloud.typ !== "CB") {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Terdapat sandi petir (${checkWx}) tapi awan yang sedang aktif bukan CB. Yakin petir terjadi tanpa awan Cumulonimbus? Pastikan untuk merubah tipe awan menjadi CB.`,
+        });
+      }
 
       // Evaluasi Angin dibandingkan dengan EFFECTIVE WIND
       const cgWindMatch = cgSafeContent.match(
@@ -626,9 +651,10 @@ export default function ValidatorPage() {
           message:
             "Sandi TAF valid 100%. Sandi lulus uji State-Engine Progresif dan SOP BMKG.",
         },
+        ...warnings,
       ]);
     } else {
-      setValidationResults(errors);
+      setValidationResults([...errors, ...warnings]);
     }
   };
 

@@ -959,6 +959,24 @@ export default function GeneratorPage() {
     return "";
   };
 
+  const getBaseWarnings = (wx: string, baseClouds: any[]) => {
+    const warnings = [];
+    if (wx && wx !== "NSW") {
+      warnings.push(
+        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Biasanya disandikan di dalam TEMPO/BECMG).`,
+      );
+    }
+    if (wx.includes("TS")) {
+      const hasCb = baseClouds.some((c) => c.type === "CB");
+      if (!hasCb) {
+        warnings.push(
+          `Meteorological Warning: Terdapat sandi petir (${wx}) tapi tidak ada awan CB di Base Condition.`,
+        );
+      }
+    }
+    return warnings;
+  };
+
   const validateCgVisibilityStrict = (mVis: string, cVis: string) => {
     if (!cVis || !mVis) return "";
     const v1 = parseInt(mVis);
@@ -1531,6 +1549,15 @@ export default function GeneratorPage() {
                     <span>{validateWxVis(weather.wx, weather.visibility)}</span>
                   </div>
                 )}
+                {getBaseWarnings(weather.wx, clouds).map((warn, idx) => (
+                  <div
+                    key={idx}
+                    className="mt-2 text-amber-700 font-medium text-xs flex items-start gap-1.5 bg-amber-50 p-2 rounded border border-amber-300"
+                  >
+                    <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />{" "}
+                    <span>{warn}</span>
+                  </div>
+                ))}
 
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <div className="flex justify-between items-center mb-2">
