@@ -335,7 +335,13 @@ export default function ValidatorPage() {
       });
     }
 
-    if (mainVis < 1000 && !mainWx.includes("FG")) {
+    // Ganti baris if (mainVis < 1000 && !mainWx.includes("FG")) menjadi:
+    if (
+      mainVis < 1000 &&
+      !mainWx.includes("FG") &&
+      !mainWx.includes("RA") &&
+      !mainWx.includes("TS")
+    ) {
       warnings.push({
         type: "warning",
         message: `Meteorological Warning (Utama): Visibilitas sangat rendah (${mainVisStr}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan sangat lebat. Yakin cuaca yang disandikan adalah '${mainWx || "tidak ada"}'? Kalau yakin ya lanjut aja.`,
@@ -505,26 +511,6 @@ export default function ValidatorPage() {
           message: `SOP Error (${indicator}): Cuaca ${checkWx} (Lithometeor) tidak valid pada visibilitas ${checkVis}m (wajib <= 5000m). Gunakan NSW untuk membersihkannya jika jarak pandang membaik.`,
         });
       }
-      if (indicator === "BECMG" && cgWx && cgWx !== "NSW") {
-        warnings.push({
-          type: "warning",
-          message: `Meteorological Warning (${indicator}): Yakin nih kondisi cuaca '${cgWx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
-        });
-      }
-
-      if (checkWx.includes("TS") && effCloud.typ !== "CB") {
-        warnings.push({
-          type: "warning",
-          message: `Meteorological Warning (${indicator}): Terdapat sandi petir (${checkWx}) tapi awan yang sedang aktif bukan CB. Yakin petir terjadi tanpa awan Cumulonimbus? Pastikan untuk merubah tipe awan menjadi CB.`,
-        });
-      }
-
-      if (checkVis < 1000 && !checkWx.includes("FG")) {
-        warnings.push({
-          type: "warning",
-          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG) . Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG. Kalau ini hujan lebat, pastikan ganti cuaca menjadi RA/+RA/TSRA/+TSRA dan ada awan CB. Tapi kalau masih yakin seperti kondisi sebelumnya, ya lanjut aja.`,
-        });
-      }
 
       // Evaluasi Angin dibandingkan dengan EFFECTIVE WIND
       const cgWindMatch = cgSafeContent.match(
@@ -638,6 +624,37 @@ export default function ValidatorPage() {
         cgAmt = "NSC";
         cgHgt = 0;
         cgTyp = "";
+      }
+
+      // --- LOGIKA WARNING: METEOROLOGIS (CHANGE GROUP) ---
+      if (indicator === "BECMG" && cgWx && cgWx !== "NSW") {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Yakin nih kondisi cuaca '${cgWx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
+        });
+      }
+
+      const hasActiveCb = cgCloudMatch
+        ? cgTyp === "CB"
+        : effCloud.typ === "CB" && !cgSafeContent.includes("NSC");
+
+      if (checkWx.includes("TS") && !hasActiveCb) {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Terdapat sandi petir (${checkWx}) tapi awan yang sedang aktif bukan CB. Yakin petir terjadi tanpa awan Cumulonimbus? Pastikan untuk merubah tipe awan menjadi CB.`,
+        });
+      }
+
+      if (
+        checkVis < 1000 &&
+        !checkWx.includes("FG") &&
+        !checkWx.includes("RA") &&
+        !checkWx.includes("TS")
+      ) {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG) atau hujan lebat. Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG. Jika ini hujan lebat, pastikan ganti cuacanya menjadi RA/+RA/TSRA/+TSRA. Kalau yakin ya lanjut aja.`,
+        });
       }
 
       // MENG-UPDATE PROGRESSIVE STATE HANYA JIKA ITU BECMG

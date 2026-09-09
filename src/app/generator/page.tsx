@@ -970,7 +970,7 @@ export default function GeneratorPage() {
 
     if (wx && wx !== "NSW" && !hasBecmg) {
       warnings.push(
-        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Tapi kalau memang yakin nonstop, ya lanjut aja.`,
+        `Meteorological Warning: Cuaca dasar disandikan '${wx}'. Yakin fenomena ini akan terjadi nonstop 24 jam mendominasi seluruh periode TAF? (Tambahkan BECMG untuk menghentikannya, atau gunakan TEMPO jika fluktuatif). Tapi kalau yakin nonstop ya lanjut aja.`,
       );
     }
     if (wx.includes("TS")) {
@@ -982,11 +982,16 @@ export default function GeneratorPage() {
       }
     }
 
-    // ATURAN BARU: VISIBILITAS < 1000m TANPA FG
+    // PERBAIKAN: Beri toleransi (pengecualian) untuk Hujan (RA) dan Petir (TS)
     const visNum = parseInt(vis);
-    if (visNum < 1000 && !wx.includes("FG")) {
+    if (
+      visNum < 1000 &&
+      !wx.includes("FG") &&
+      !wx.includes("RA") &&
+      !wx.includes("TS")
+    ) {
       warnings.push(
-        `Meteorological Warning: Visibilitas sangat rendah (${visNum}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan lebat. Yakin cuaca yang disandikan bukan FG?`,
+        `Meteorological Warning: Visibilitas sangat rendah (${visNum}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan lebat. Yakin cuaca yang disandikan bukan FG/Hujan Lebat?`,
       );
     }
 
@@ -998,7 +1003,7 @@ export default function GeneratorPage() {
 
     if (cg.indicator === "BECMG" && cg.hasWx && cg.wx && cg.wx !== "NSW") {
       warnings.push(
-        `Meteorological Warning: Yakin nih kondisi cuaca '${cg.wx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO).`,
+        `Meteorological Warning: Yakin nih kondisi cuaca '${cg.wx}' akan berlangsung terus-menerus selama sisa durasi validitas TAF? (Cuaca fluktuatif seharusnya disandikan dengan TEMPO). Kalau yakin ya lanjut aja.`,
       );
     }
 
@@ -1023,10 +1028,15 @@ export default function GeneratorPage() {
       }
     }
 
-    // ATURAN BARU: VISIBILITAS < 1000m TANPA FG DI CHANGE GROUP
-    if (checkVis < 1000 && !checkWx.includes("FG")) {
+    // PERBAIKAN: Beri toleransi (pengecualian) untuk Hujan (RA) dan Petir (TS) di Change Group
+    if (
+      checkVis < 1000 &&
+      !checkWx.includes("FG") &&
+      !checkWx.includes("RA") &&
+      !checkWx.includes("TS")
+    ) {
       warnings.push(
-        `Meteorological Warning (${cg.indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya disebabkan oleh kabut radiasi/embun (FG). Yakin fenomena saat ini masih '${checkWx || "tidak ada"}'? Jika ini embun, pastikan ganti cuaca menjadi FG. Kalau ini hujan lebat, pastikan ganti cuaca menjadi RA/+RA/TSRA/+TSRA dan ada awan CB. Tapi kalau masih yakin seperti kondisi sebelumnya, ya lanjut aja.`,
+        `Meteorological Warning (${cg.indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya disebabkan oleh kabut radiasi/embun (FG) atau hujan lebat. Yakin fenomena saat ini masih '${checkWx || "tidak ada"}'? Jika ini embun, pastikan ganti cuaca menjadi FG atau jika ini hujan lebat ganti menjadi RA/+RA/TSRA/+TSRA`,
       );
     }
 
