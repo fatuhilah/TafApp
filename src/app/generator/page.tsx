@@ -954,6 +954,8 @@ export default function GeneratorPage() {
       return "SOP Error: FG visibilitas < 1000m";
     if (wx.includes("BR") && (v < 1000 || v > 5000))
       return "SOP Error: BR visibilitas 1000m - 5000m";
+    if (["FU", "HZ", "DU", "SA"].some((w) => wx.includes(w)) && v > 5000)
+      return "SOP Error: FU/HZ/DU/SA hanya disandikan jika visibilitas <= 5000m";
     return "";
   };
 
@@ -1077,6 +1079,12 @@ export default function GeneratorPage() {
     }
     if (checkWx.includes("BR") && (checkVis < 1000 || checkVis > 5000)) {
       return `SOP Error: Cuaca BR masih aktif pada visibilitas ${checkVis}m. Centang Cuaca dan pilih NSW untuk membersihkannya.`;
+    }
+    if (
+      ["FU", "HZ", "DU", "SA"].some((w) => checkWx.includes(w)) &&
+      checkVis > 5000
+    ) {
+      return `SOP Error: ${checkWx} tidak valid pada visibilitas ${checkVis}m (wajib <= 5000m). Pilih NSW untuk membersihkan.`;
     }
     return "";
   };

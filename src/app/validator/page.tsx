@@ -300,6 +300,24 @@ export default function ValidatorPage() {
         message: `SOP Error (Utama): Cuaca BR (Mist) wajib memiliki visibilitas antara 1000m hingga 5000m.`,
       });
     }
+    if (
+      ["FU", "HZ", "DU", "SA"].some((w) => mainWx.includes(w)) &&
+      mainVis > 5000
+    ) {
+      errors.push({
+        type: "error",
+        message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
+      });
+    }
+    if (
+      ["FU", "HZ", "DU", "SA"].some((w) => mainWx.includes(w)) &&
+      mainVis > 5000
+    ) {
+      errors.push({
+        type: "error",
+        message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
+      });
+    }
 
     // 4. VALIDASI STRICT CHANGE GROUPS DENGAN PROGRESSIVE STATE ENGINE
     const visThresholds = [150, 350, 600, 800, 1500, 3000, 5000];
@@ -453,6 +471,15 @@ export default function ValidatorPage() {
         errors.push({
           type: "error",
           message: `SOP Error (${indicator}): Cuaca BR (Mist) menuntut visibilitas antara 1000-5000m. Terdeteksi Vis: ${checkVis}m. Pastikan untuk membersihkan BR menggunakan NSW jika jarak pandang melampaui 5000m.`,
+        });
+      }
+      if (
+        ["FU", "HZ", "DU", "SA"].some((w) => checkWx.includes(w)) &&
+        checkVis > 5000
+      ) {
+        errors.push({
+          type: "error",
+          message: `SOP Error (${indicator}): Cuaca ${checkWx} (Lithometeor) tidak valid pada visibilitas ${checkVis}m (wajib <= 5000m). Gunakan NSW untuk membersihkannya jika jarak pandang membaik.`,
         });
       }
 
