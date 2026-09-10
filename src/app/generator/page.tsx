@@ -12,6 +12,8 @@ import {
   XCircle,
   Lightbulb,
   Copy,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 const VISIBILITY_OPTIONS = [
@@ -153,6 +155,8 @@ export default function GeneratorPage() {
       | "WIND"
       | null;
   }>({ isOpen: false, type: null });
+
+  const [zoomScale, setZoomScale] = useState<number>(1);
 
   const [toast, setToast] = useState({
     show: false,
@@ -1419,70 +1423,64 @@ export default function GeneratorPage() {
                 </select>
               </div>
 
-              <div className="col-span-2 grid grid-cols-2 gap-4 border-t pt-4 mt-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">
-                    Jenis TAF
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      className="border p-2 rounded-lg flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={header.type}
-                      onChange={(e) =>
-                        setHeader({ ...header, type: e.target.value })
-                      }
-                    >
-                      <option value="NORMAL">Normal</option>
-                      <option value="AMD">AMD</option>
-                      <option value="COR">COR</option>
-                    </select>
-                    {header.type !== "NORMAL" && (
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 mt-2">
+                <div className="flex flex-col gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Jenis TAF
+                    </label>
+                    <div className="flex gap-2">
                       <select
-                        className="border p-2 rounded-lg w-20 bg-amber-100 text-amber-900 font-bold focus:ring-2 focus:ring-amber-500 outline-none"
-                        value={header.sequence}
+                        className="border p-2 rounded-lg flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={header.type}
                         onChange={(e) =>
-                          setHeader({ ...header, sequence: e.target.value })
+                          setHeader({ ...header, type: e.target.value })
                         }
                       >
-                        {["A", "B", "C", "D", "E"].map((seq) => (
-                          <option key={seq} value={seq}>
-                            {seq}
-                          </option>
-                        ))}
+                        <option value="NORMAL">Normal</option>
+                        <option value="AMD">AMD</option>
+                        <option value="COR">COR</option>
                       </select>
-                    )}
-                    {/* TAMBAHAN WARNING SOP AMD & COR */}
-                    {header.type === "COR" && (
-                      <div className="col-span-2 mt-1 text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                        <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />
-                        <span>
-                          <strong>SOP Reminder (COR):</strong> Jika koreksi
-                          diterbitkan setelah TAF berjalan, awal validitas{" "}
-                          <strong>WAJIB</strong> diubah menjadi sisa periode
-                          (isi kolom "Mulai Validitas" di atas). Jam terbit
-                          tetap menggunakan jam TAF asli.
-                        </span>
-                      </div>
-                    )}
-                    {header.type === "AMD" && (
-                      <div className="col-span-2 mt-1 text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                        <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />
-                        <span>
-                          <strong>SOP Reminder (AMD):</strong> Jam terbit TAF
-                          AMD <strong>WAJIB</strong> menggunakan waktu riil saat
-                          ini (bukan jam terbit TAF asli), dan awal validitas
-                          wajib merupakan sisa periode.
-                        </span>
-                      </div>
-                    )}
-
-                    <p className="col-span-2 text-[10px] text-amber-700 leading-tight mt-2">
-                      *Masukkan waktu aktual {header.type} dibuat, dan jam
-                      dimulainya sisa periode validitas. Sisa batas akhir
-                      validitas akan mengikuti siklus utama.
-                    </p>
+                      {header.type !== "NORMAL" && (
+                        <select
+                          className="border p-2 rounded-lg w-20 bg-amber-100 text-amber-900 font-bold focus:ring-2 focus:ring-amber-500 outline-none"
+                          value={header.sequence}
+                          onChange={(e) =>
+                            setHeader({ ...header, sequence: e.target.value })
+                          }
+                        >
+                          {["A", "B", "C", "D", "E"].map((seq) => (
+                            <option key={seq} value={seq}>
+                              {seq}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Reminder AMD/COR sekarang ada di bawah dropdown secara rapi */}
+                  {header.type === "COR" && (
+                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
+                      <span>
+                        <strong>SOP Reminder (COR):</strong> Jika diterbitkan
+                        setelah TAF berjalan, awal validitas{" "}
+                        <strong>WAJIB</strong> diubah menjadi sisa periode.
+                      </span>
+                    </div>
+                  )}
+                  {header.type === "AMD" && (
+                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
+                      <span>
+                        <strong>SOP Reminder (AMD):</strong> Jam terbit TAF AMD{" "}
+                        <strong>WAJIB</strong> menggunakan waktu riil saat ini.
+                      </span>
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">
                     ICAO
@@ -1503,35 +1501,42 @@ export default function GeneratorPage() {
               </div>
 
               {header.type !== "NORMAL" && (
-                <div className="col-span-2 grid grid-cols-2 gap-4 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">
-                      Jam & Menit Terbit {header.type}
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Jam"
-                        maxLength={2}
-                        className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-                        value={header.customHour}
-                        onChange={(e) =>
-                          setHeader({ ...header, customHour: e.target.value })
-                        }
-                      />
-                      <input
-                        type="text"
-                        placeholder="Mnt"
-                        maxLength={2}
-                        className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-                        value={header.customMinute}
-                        onChange={(e) =>
-                          setHeader({ ...header, customMinute: e.target.value })
-                        }
-                      />
+                <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
+                  {/* Jam Terbit HANYA muncul untuk AMD */}
+                  {header.type === "AMD" && (
+                    <div>
+                      <label className="block text-xs font-bold text-amber-800 mb-1">
+                        Jam & Menit Terbit {header.type}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Jam"
+                          maxLength={2}
+                          className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
+                          value={header.customHour}
+                          onChange={(e) =>
+                            setHeader({ ...header, customHour: e.target.value })
+                          }
+                        />
+                        <input
+                          type="text"
+                          placeholder="Mnt"
+                          maxLength={2}
+                          className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
+                          value={header.customMinute}
+                          onChange={(e) =>
+                            setHeader({
+                              ...header,
+                              customMinute: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div>
+                  )}
+                  {/* Mulai Validitas menyesuaikan lebar jika COR */}
+                  <div className={header.type === "COR" ? "md:col-span-2" : ""}>
                     <label className="block text-xs font-bold text-amber-800 mb-1">
                       Mulai Validitas (Sisa)
                     </label>
@@ -1549,11 +1554,6 @@ export default function GeneratorPage() {
                       }
                     />
                   </div>
-                  <p className="col-span-2 text-[10px] text-amber-700 leading-tight">
-                    *Masukkan waktu aktual {header.type} dibuat, dan jam
-                    dimulainya sisa periode validitas. Sisa batas akhir
-                    validitas akan mengikuti siklus utama.
-                  </p>
                 </div>
               )}
             </div>
@@ -2813,18 +2813,24 @@ export default function GeneratorPage() {
       {lightbox.isOpen && lightbox.type && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 md:p-10 backdrop-blur-sm">
           <button
-            onClick={() => setLightbox({ isOpen: false, type: null })}
-            className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
+            onClick={() => {
+              setLightbox({ isOpen: false, type: null });
+              setZoomScale(1);
+            }}
+            className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors z-[110]"
           >
             <XCircle className="w-10 h-10" />
           </button>
-          <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-5xl mb-6 gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-center w-full max-w-5xl mb-6 gap-4 z-[110]">
             <h3 className="text-white font-bold text-xl md:text-2xl tracking-wide">
               {modalTitle}
             </h3>
             <div className="flex items-center gap-4">
               <button
-                onClick={modalPrev}
+                onClick={() => {
+                  modalPrev();
+                  setZoomScale(1);
+                }}
                 className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition-colors shadow-md border border-slate-700"
               >
                 « Prev
@@ -2833,14 +2839,41 @@ export default function GeneratorPage() {
                 {modalInfo.displayDate}
               </span>
               <button
-                onClick={modalNext}
+                onClick={() => {
+                  modalNext();
+                  setZoomScale(1);
+                }}
                 className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold transition-colors shadow-md border border-slate-700"
               >
                 Next »
               </button>
             </div>
           </div>
-          <div className="relative w-full max-w-5xl h-full flex items-center justify-center">
+
+          <div className="relative w-full max-w-5xl flex-1 flex items-center justify-center overflow-auto rounded-xl border border-slate-800 bg-black/50">
+            {/* KONTROL ZOOM MENGAMBANG */}
+            {!modalError && (
+              <div className="absolute bottom-6 right-6 flex items-center gap-2 z-[110] bg-slate-900/80 p-2 rounded-full border border-slate-700 backdrop-blur-md">
+                <button
+                  onClick={() => setZoomScale((p) => Math.max(0.5, p - 0.3))}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-5 h-5" />
+                </button>
+                <span className="text-white text-xs font-bold min-w-[40px] text-center">
+                  {Math.round(zoomScale * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoomScale((p) => Math.min(4, p + 0.3))}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
             {modalError ? (
               <div className="text-slate-400 text-lg flex flex-col items-center gap-3">
                 <AlertTriangle className="w-12 h-12 text-slate-500" />
@@ -2850,22 +2883,32 @@ export default function GeneratorPage() {
                 </p>
               </div>
             ) : (
-              <img
-                key={modalInfo.url}
-                src={modalInfo.url}
-                alt={modalTitle}
-                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl bg-white"
-                onError={() => {
-                  if (lightbox.type === "STREAMLINE") setStreamlineError(true);
-                  else if (lightbox.type === "KI") setKiError(true);
-                  else if (lightbox.type === "LI") setLiError(true);
-                  else if (lightbox.type === "SI") setSiError(true);
-                  else if (lightbox.type === "RAIN") setRainError(true);
-                  else if (lightbox.type === "RH") setRhError(true);
-                  else if (lightbox.type === "WIND") setWindError(true);
-                  else if (lightbox.type === "OLR") setOlrError(true);
-                }}
-              />
+              <div className="w-full h-full flex items-center justify-center p-4">
+                <img
+                  key={modalInfo.url}
+                  src={modalInfo.url}
+                  alt={modalTitle}
+                  style={{
+                    transform: `scale(${zoomScale})`,
+                    transition:
+                      "transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                    transformOrigin: "center center",
+                  }}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl bg-white cursor-grab active:cursor-grabbing"
+                  onDoubleClick={() => setZoomScale((p) => (p === 1 ? 2 : 1))}
+                  onError={() => {
+                    if (lightbox.type === "STREAMLINE")
+                      setStreamlineError(true);
+                    else if (lightbox.type === "KI") setKiError(true);
+                    else if (lightbox.type === "LI") setLiError(true);
+                    else if (lightbox.type === "SI") setSiError(true);
+                    else if (lightbox.type === "RAIN") setRainError(true);
+                    else if (lightbox.type === "RH") setRhError(true);
+                    else if (lightbox.type === "WIND") setWindError(true);
+                    else if (lightbox.type === "OLR") setOlrError(true);
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
