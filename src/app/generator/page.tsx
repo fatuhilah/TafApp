@@ -1138,25 +1138,31 @@ export default function GeneratorPage() {
 
     let isValid = false;
 
-    // Aturan 1: Perubahan signifikan pada jumlah awan (BKN/OVC vs FEW/SCT) jika berada di bawah 1500 ft
     const grpB = ["BKN", "OVC"];
+    const isBaseBKN_OVC = grpB.includes(bAmt);
+    const isCgBKN_OVC = grpB.includes(cAmt);
+
+    // Aturan B: Perubahan kategori (NSC/FEW/SCT <-> BKN/OVC) di bawah 1500 ft
     if (ht < 15 || bHt < 15) {
-      if (grpB.includes(bAmt) !== grpB.includes(cAmt)) isValid = true;
+      if (isBaseBKN_OVC !== isCgBKN_OVC) isValid = true;
     }
 
-    // Aturan 2: Melintasi threshold ketinggian awan (100, 200, 500, 1000, 1500 ft)
-    const thresholds = [1, 2, 5, 10, 15];
-    if (bHt < ht) {
-      if (thresholds.some((t) => bHt < t && t <= ht)) isValid = true;
-    } else if (bHt > ht) {
-      if (thresholds.some((t) => bHt > t && t >= ht)) isValid = true;
+    // Aturan A: Melintasi threshold ketinggian awan (100, 200, 500, 1000, 1500 ft)
+    // HANYA BERLAKU JIKA AWAN TERSEBUT BKN / OVC
+    if (isBaseBKN_OVC || isCgBKN_OVC) {
+      const thresholds = [1, 2, 5, 10, 15];
+      if (bHt < ht) {
+        if (thresholds.some((t) => bHt < t && t <= ht)) isValid = true;
+      } else if (bHt > ht) {
+        if (thresholds.some((t) => bHt > t && t >= ht)) isValid = true;
+      }
     }
 
-    // Aturan 3: Perubahan menjadi langit bersih
+    // Aturan Tambahan: Perubahan menjadi langit bersih
     if (cAmt === "NSC") isValid = true;
 
     if (!isValid)
-      return "SOP Error: Perubahan awan tidak melintasi threshold batas (100, 200, 500, 1000, 1500 ft) atau tidak merubah kategori BKN/OVC di bawah 1500 ft.";
+      return "SOP Error: Perubahan awan tidak melintasi threshold batas (100, 200, 500, 1000, 1500 ft) yang HANYA berlaku untuk awan BKN/OVC, atau tidak merubah kategori signifikan (BKN/OVC) di bawah 1500 ft.";
 
     return "";
   };
@@ -1445,6 +1451,36 @@ export default function GeneratorPage() {
                         ))}
                       </select>
                     )}
+                    {/* TAMBAHAN WARNING SOP AMD & COR */}
+                    {header.type === "COR" && (
+                      <div className="col-span-2 mt-1 text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                        <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />
+                        <span>
+                          <strong>SOP Reminder (COR):</strong> Jika koreksi
+                          diterbitkan setelah TAF berjalan, awal validitas{" "}
+                          <strong>WAJIB</strong> diubah menjadi sisa periode
+                          (isi kolom "Mulai Validitas" di atas). Jam terbit
+                          tetap menggunakan jam TAF asli.
+                        </span>
+                      </div>
+                    )}
+                    {header.type === "AMD" && (
+                      <div className="col-span-2 mt-1 text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                        <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500" />
+                        <span>
+                          <strong>SOP Reminder (AMD):</strong> Jam terbit TAF
+                          AMD <strong>WAJIB</strong> menggunakan waktu riil saat
+                          ini (bukan jam terbit TAF asli), dan awal validitas
+                          wajib merupakan sisa periode.
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="col-span-2 text-[10px] text-amber-700 leading-tight mt-2">
+                      *Masukkan waktu aktual {header.type} dibuat, dan jam
+                      dimulainya sisa periode validitas. Sisa batas akhir
+                      validitas akan mengikuti siklus utama.
+                    </p>
                   </div>
                 </div>
                 <div>
