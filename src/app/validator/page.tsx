@@ -188,7 +188,19 @@ export default function ValidatorPage() {
             message: `SOP Error: Waktu terbit TAF COR (${issueDate}${issueHour}Z) sudah melewati batas akhir validitas (${endDD}${endHH}Z). TAF sudah kadaluarsa untuk dikoreksi.`,
           });
         }
-        // Catatan: TAF COR diperbolehkan memiliki mainStartAbs < issueAbs karena ia mempertahankan validitas aslinya.
+        if (mainStartAbs < issueAbs) {
+          errors.push({
+            type: "error",
+            message: `SOP Error: Awal validitas TAF COR (${startDD}${startHH}Z) tidak boleh berada di masa lalu dibandingkan jam terbit aslinya (${issueDate}${issueHour}Z). Validitas harus berupa sisa waktu periode.`,
+          });
+        }
+        // Pengingat jika Forecaster lupa mengganti sisa jam validitas
+        if (mainStartAbs - issueAbs === 1) {
+          warnings.push({
+            type: "warning",
+            message: `SOP Reminder (COR): Awal validitas TAF COR disandikan ${startDD}${startHH}Z (sama dengan periode awal TAF normal). Jika koreksi ini diterbitkan setelah TAF berjalan, awal validitas WAJIB diubah menjadi sisa dari periode TAF (contoh: dari 1500 menjadi 1502). Jika koreksi ini dilakukan sebelum TAF berlaku, silakan abaikan pesan ini.`,
+          });
+        }
       } else {
         if (mainStartAbs < issueAbs) {
           errors.push({
@@ -598,25 +610,34 @@ export default function ValidatorPage() {
 
           if (!isValid) {
             const grpB = ["BKN", "OVC"];
+            const isBaseBKN_OVC = grpB.includes(effCloud.amt);
+            const isCgBKN_OVC = grpB.includes(cgAmt);
+
+            // ATURAN B: Perubahan kategori (NSC/FEW/SCT <-> BKN/OVC) di bawah 1500 ft
             if (cgHgt < 15 || effCloud.hgt < 15) {
-              if (grpB.includes(effCloud.amt) !== grpB.includes(cgAmt))
+              if (isBaseBKN_OVC !== isCgBKN_OVC) {
                 isValid = true;
+              }
             }
 
-            const cloudThresholds = [1, 2, 5, 10, 15];
-            if (effCloud.hgt < cgHgt) {
-              if (cloudThresholds.some((t) => effCloud.hgt < t && t <= cgHgt))
-                isValid = true;
-            } else if (effCloud.hgt > cgHgt) {
-              if (cloudThresholds.some((t) => effCloud.hgt > t && t >= cgHgt))
-                isValid = true;
+            // ATURAN A: Melintasi threshold tinggi (100, 200, 500, 1000, 1500 ft)
+            // HANYA BERLAKU JIKA AWAN TERSEBUT ADALAH BKN ATAU OVC
+            if (isBaseBKN_OVC || isCgBKN_OVC) {
+              const cloudThresholds = [1, 2, 5, 10, 15];
+              if (effCloud.hgt < cgHgt) {
+                if (cloudThresholds.some((t) => effCloud.hgt < t && t <= cgHgt))
+                  isValid = true;
+              } else if (effCloud.hgt > cgHgt) {
+                if (cloudThresholds.some((t) => effCloud.hgt > t && t >= cgHgt))
+                  isValid = true;
+              }
             }
           }
 
           if (!isValid && cgAmt !== "NSC") {
             errors.push({
               type: "error",
-              message: `SOP Error (${indicator}): Perubahan awan dari ${effCloud.amt}${String(effCloud.hgt).padStart(3, "0")} ke ${cgCloudMatch[0]} tidak valid. Harus menembus threshold (100, 200, 500, 1000, 1500 ft) atau merubah kategori (BKN/OVC).`,
+              message: `SOP Error (${indicator}): Perubahan awan dari ${effCloud.amt}${String(effCloud.hgt).padStart(3, "0")} ke ${cgCloudMatch[0]} tidak valid. Perubahan threshold ketinggian (100-1500ft) HANYA berlaku untuk awan BKN/OVC, atau pastikan terjadi perubahan kategori signifikan (menjadi/berhenti BKN/OVC) di bawah 1500 ft.`,
             });
           }
         }
