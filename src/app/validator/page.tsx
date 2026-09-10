@@ -198,7 +198,7 @@ export default function ValidatorPage() {
         if (mainStartAbs - issueAbs === 1) {
           warnings.push({
             type: "warning",
-            message: `SOP Reminder (COR): Awal validitas TAF COR disandikan ${startDD}${startHH}Z (sama dengan periode awal TAF normal). Jika koreksi ini diterbitkan setelah TAF berjalan, awal validitas WAJIB diubah menjadi sisa dari periode TAF (contoh: dari 1500 menjadi 1502). Jika koreksi ini dilakukan sebelum TAF berlaku, silakan abaikan pesan ini.`,
+            message: `SOP Reminder (COR): Awal validitas TAF COR disandikan ${startDD}${startHH}Z (sama dengan periode awal TAF normal). Jika koreksi ini diterbitkan setelah TAF berjalan (setelah ${startDD}${startHH}Z), awal validitas WAJIB diubah menjadi sisa dari periode TAF (contoh: dari 0100 menjadi 0102). Jika koreksi ini dilakukan sebelum TAF berlaku, silakan abaikan pesan ini.`,
           });
         }
       } else {
