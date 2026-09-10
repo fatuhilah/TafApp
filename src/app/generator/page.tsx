@@ -1416,25 +1416,6 @@ export default function GeneratorPage() {
                       )}
                     </div>
                   </div>
-                  {header.type === "COR" && (
-                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
-                      <span>
-                        <strong>SOP Reminder (COR):</strong> Jika diterbitkan
-                        setelah TAF berjalan, awal validitas{" "}
-                        <strong>WAJIB</strong> diubah menjadi sisa periode.
-                      </span>
-                    </div>
-                  )}
-                  {header.type === "AMD" && (
-                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
-                      <span>
-                        <strong>SOP Reminder (AMD):</strong> Jam terbit TAF AMD{" "}
-                        <strong>WAJIB</strong> menggunakan waktu riil saat ini.
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">
@@ -1463,7 +1444,7 @@ export default function GeneratorPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Cth: 07 (Untuk 07/06)"
+                      placeholder=""
                       maxLength={2}
                       className="w-full md:w-1/2 border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
                       value={header.customValidStart}
@@ -1474,11 +1455,6 @@ export default function GeneratorPage() {
                         })
                       }
                     />
-                    <p className="text-[10px] text-amber-700 leading-tight mt-1">
-                      *Jam Terbit TAF <strong>{header.type}</strong> otomatis
-                      mengikuti siklus utama sesuai arahan BMKG Pusat. Silakan
-                      masukkan jam sisa masa berlakunya saja.
-                    </p>
                   </div>
                 </div>
               )}
