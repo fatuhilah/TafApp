@@ -89,6 +89,7 @@ export default function GeneratorPage() {
     issueTime: "05",
     type: "NORMAL",
     sequence: "A",
+    customValidStart: "",
   });
   const [weather, setWeather] = useState({
     isCavok: false,
@@ -207,6 +208,7 @@ export default function GeneratorPage() {
             type: tafType,
             issueTime: parsedIssueH,
             sequence: "A",
+            customValidStart: "",
           }));
 
           let wDir = "",
@@ -1207,17 +1209,32 @@ export default function GeneratorPage() {
     const refIssueTime = new Date(baseDate);
     refIssueTime.setUTCHours(issueHourOriginal);
 
+    // KEMBALIKAN mainStartTime agar tidak error saat cek lintas tanggal di bawah
     const mainStartTime = new Date(refIssueTime.getTime() + 60 * 60 * 1000);
-    const mainEndTime = new Date(mainStartTime.getTime() + 24 * 60 * 60 * 1000);
+
+    // Default TAF Normal (Siklus Utama)
+    let finalStartObj = new Date(mainStartTime);
+    const finalEndObj = new Date(mainStartTime.getTime() + 24 * 60 * 60 * 1000);
+
+    // KEMBALIKAN LOGIKA SISA VALIDITAS DI SINI UNTUK AMD/COR/TERLAMBAT
+    if (header.type !== "NORMAL" && header.customValidStart) {
+      const customStartH = parseInt(header.customValidStart);
+      finalStartObj = new Date(refIssueTime);
+      finalStartObj.setUTCHours(customStartH);
+      // Jika jam sisa lebih kecil dari jam terbit, berarti udah lewat tengah malam (besoknya)
+      if (customStartH < issueHourOriginal) {
+        finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
+      }
+    }
 
     const dateDD = refIssueTime.getUTCDate().toString().padStart(2, "0");
-    let startDDStr = mainStartTime.getUTCDate().toString().padStart(2, "0");
-    const endDDStr = mainEndTime.getUTCDate().toString().padStart(2, "0");
-    let actualValidStartStr = mainStartTime
+    const startDDStr = finalStartObj.getUTCDate().toString().padStart(2, "0");
+    const endDDStr = finalEndObj.getUTCDate().toString().padStart(2, "0");
+    const actualValidStartStr = finalStartObj
       .getUTCHours()
       .toString()
       .padStart(2, "0");
-    const validEndStr = mainEndTime.getUTCHours().toString().padStart(2, "0");
+    const validEndStr = finalEndObj.getUTCHours().toString().padStart(2, "0");
 
     let bbbStr = "";
     let bodyType = "";
@@ -1233,6 +1250,7 @@ export default function GeneratorPage() {
       bodyType = "AMD "; // Aturan pusat: Header RRA tapi body TAF AMD
     }
 
+    // Waktu terbit dikunci ke header.issueTime sesuai SOP Pusat terbaru
     let tafString = `FTID40 ${header.icao} ${dateDD}${header.issueTime}00${bbbStr}\n`;
     tafString += `TAF ${bodyType}${header.icao} ${dateDD}${header.issueTime}00Z ${startDDStr}${actualValidStartStr}/${endDDStr}${validEndStr} `;
 
@@ -1379,7 +1397,7 @@ export default function GeneratorPage() {
                         <option value="NORMAL">Normal</option>
                         <option value="AMD">AMD</option>
                         <option value="COR">COR</option>
-                        <option value="TERLAMBAT">TERLAMBAT (RRA)</option>
+                        <option value="TERLAMBAT">TERLAMBAT</option>
                       </select>
                       {header.type !== "NORMAL" && (
                         <select
@@ -1398,6 +1416,25 @@ export default function GeneratorPage() {
                       )}
                     </div>
                   </div>
+                  {header.type === "COR" && (
+                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
+                      <span>
+                        <strong>SOP Reminder (COR):</strong> Jika diterbitkan
+                        setelah TAF berjalan, awal validitas{" "}
+                        <strong>WAJIB</strong> diubah menjadi sisa periode.
+                      </span>
+                    </div>
+                  )}
+                  {header.type === "AMD" && (
+                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
+                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
+                      <span>
+                        <strong>SOP Reminder (AMD):</strong> Jam terbit TAF AMD{" "}
+                        <strong>WAJIB</strong> menggunakan waktu riil saat ini.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">
@@ -1417,12 +1454,40 @@ export default function GeneratorPage() {
                   />
                 </div>
               </div>
+
+              {header.type !== "NORMAL" && (
+                <div className="col-span-2 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
+                  <div className="flex flex-col gap-2">
+                    <label className="block text-xs font-bold text-amber-800">
+                      Mulai Validitas (Sisa Periode TAF)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Cth: 07 (Untuk 07/06)"
+                      maxLength={2}
+                      className="w-full md:w-1/2 border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
+                      value={header.customValidStart}
+                      onChange={(e) =>
+                        setHeader({
+                          ...header,
+                          customValidStart: e.target.value,
+                        })
+                      }
+                    />
+                    <p className="text-[10px] text-amber-700 leading-tight mt-1">
+                      *Jam Terbit TAF <strong>{header.type}</strong> otomatis
+                      mengikuti siklus utama sesuai arahan BMKG Pusat. Silakan
+                      masukkan jam sisa masa berlakunya saja.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <h2 className="text-xl font-semibold">2. Utama</h2>
+              <h2 className="text-xl font-semibold">2. Base Condition</h2>
               <label className="flex items-center gap-2 font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full cursor-pointer hover:bg-blue-100">
                 <input
                   type="checkbox"

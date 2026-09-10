@@ -49,10 +49,15 @@ export default function ValidatorPage() {
     const isAmd = text.includes("TAF AMD");
     const isCor = text.includes("TAF COR");
 
-    if (isAmd && bbbIndicator && !bbbIndicator.startsWith("AA")) {
+    // ATURAN BARU: TAF AMD bisa dipicu oleh indikator AAA (Amandemen) atau RRA (Terlambat)
+    if (
+      isAmd &&
+      bbbIndicator &&
+      !(bbbIndicator.startsWith("AA") || bbbIndicator.startsWith("RR"))
+    ) {
       errors.push({
         type: "error",
-        message: `SOP Error: TAF AMD (Amandemen) harus menggunakan indikator amandemen (AAA, AAB, dst) pada WMO Header. Ditemukan: '${bbbIndicator}'.`,
+        message: `SOP Error: TAF AMD harus menggunakan indikator amandemen (AAA, AAB...) atau terlambat (RRA, RRB...) pada WMO Header. Ditemukan: '${bbbIndicator}'.`,
       });
     }
     if (isCor && bbbIndicator && !bbbIndicator.startsWith("CC")) {
@@ -174,34 +179,34 @@ export default function ValidatorPage() {
       mainEndAbs = endDDAdj * 24 + eHour;
 
       // VALIDASI WAKTU TERBIT VS AWAL VALIDITAS
-      if (isAmd) {
-        if (mainStartAbs < issueAbs) {
-          errors.push({
-            type: "error",
-            message: `SOP Error: Untuk TAF AMD, awal validitas (${startDD}${startHH}Z) tidak boleh berada di masa lalu dibandingkan jam terbit revisi (${issueDate}${issueHour}Z). Sesuaikan awal validitas dengan sisa waktu prakiraan.`,
-          });
-        }
-      } else if (isCor) {
+      if (isAmd || isCor) {
         if (mainEndAbs <= issueAbs) {
           errors.push({
             type: "error",
-            message: `SOP Error: Waktu terbit TAF COR (${issueDate}${issueHour}Z) sudah melewati batas akhir validitas (${endDD}${endHH}Z). TAF sudah kadaluarsa untuk dikoreksi.`,
+            message: `SOP Error: Waktu terbit sandi (${issueDate}${issueHour}Z) sudah melewati batas akhir validitas (${endDD}${endHH}Z). TAF sudah kadaluarsa.`,
           });
         }
         if (mainStartAbs < issueAbs) {
           errors.push({
             type: "error",
-            message: `SOP Error: Awal validitas TAF COR (${startDD}${startHH}Z) tidak boleh berada di masa lalu dibandingkan jam terbit aslinya (${issueDate}${issueHour}Z). Validitas harus berupa sisa waktu periode.`,
+            message: `SOP Error: Awal validitas (${startDD}${startHH}Z) tidak boleh berada di masa lalu dibandingkan jam terbit aslinya (${issueDate}${issueHour}Z).`,
           });
         }
         // Pengingat jika Forecaster lupa mengganti sisa jam validitas
         if (mainStartAbs - issueAbs === 1) {
+          const isTerlambat = bbbIndicator.startsWith("RR");
+          const tipeStr = isTerlambat
+            ? "TAF Terlambat (RRA)"
+            : isAmd
+              ? "TAF AMD"
+              : "TAF COR";
           warnings.push({
             type: "warning",
-            message: `SOP Reminder (COR): Awal validitas TAF COR disandikan ${startDD}${startHH}Z (sama dengan periode awal TAF normal). Jika koreksi ini diterbitkan setelah TAF berjalan (setelah ${startDD}${startHH}Z), awal validitas WAJIB diubah menjadi sisa dari periode TAF (contoh: dari 0100 menjadi 0102). Jika koreksi ini dilakukan sebelum TAF berlaku, silakan abaikan pesan ini.`,
+            message: `SOP Reminder (${tipeStr}): Awal validitas disandikan ${startDD}${startHH}Z (sama dengan periode awal TAF normal). Jika sandi ini dikirim SETELAH TAF berjalan, awal validitas WAJIB diubah menjadi sisa periode TAF. Jika sandi ini dikirim SEBELUM TAF berlaku, silakan abaikan pesan ini.`,
           });
         }
       } else {
+        // Logika TAF Normal
         if (mainStartAbs < issueAbs) {
           errors.push({
             type: "error",
@@ -322,15 +327,7 @@ export default function ValidatorPage() {
         message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
       });
     }
-    if (
-      ["FU", "HZ", "DU", "SA"].some((w) => mainWx.includes(w)) &&
-      mainVis > 5000
-    ) {
-      errors.push({
-        type: "error",
-        message: `SOP Error (Utama): Cuaca ${mainWx} (Lithometeor) wajib memiliki visibilitas <= 5000m.`,
-      });
-    }
+
     const hasBecmg = text.includes("BECMG");
 
     if (mainWx && mainWx !== "NSW" && !hasBecmg) {
@@ -347,7 +344,6 @@ export default function ValidatorPage() {
       });
     }
 
-    // Ganti baris if (mainVis < 1000 && !mainWx.includes("FG")) menjadi:
     if (
       mainVis < 1000 &&
       !mainWx.includes("FG") &&
