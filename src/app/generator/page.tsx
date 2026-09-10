@@ -89,9 +89,6 @@ export default function GeneratorPage() {
     issueTime: "05",
     type: "NORMAL",
     sequence: "A",
-    customHour: "",
-    customMinute: "",
-    customValidStart: "",
   });
   const [weather, setWeather] = useState({
     isCavok: false,
@@ -174,7 +171,6 @@ export default function GeneratorPage() {
           .map((l) => l.trim())
           .filter(Boolean);
         if (lines.length >= 2) {
-          // Membedah TAF Utama (Baris ke-2)
           const mainTokens = lines[1].split(" ").filter(Boolean);
 
           let typeIndex = 1;
@@ -187,17 +183,13 @@ export default function GeneratorPage() {
           const parsedIcao = mainTokens[typeIndex];
           const timeZ = mainTokens[typeIndex + 1];
 
-          // AMBIL TANGGAL, JAM, MENIT DARI SANDI
           const parsedDD = timeZ.substring(0, 2);
           const parsedIssueH = timeZ.substring(2, 4);
-          const parsedIssueM = timeZ.substring(4, 6);
 
-          // LOGIKA PINTAR UNTUK MENDAPATKAN BULAN & TAHUN (YYYY-MM-DD)
           const now = new Date();
           let yyyy = now.getUTCFullYear();
           let mm = now.getUTCMonth() + 1;
 
-          // Cegah error perpindahan bulan: Jika hari ini tanggal 1, tapi TAF berisi tanggal 31, berarti TAF itu milik bulan lalu
           if (now.getUTCDate() < 10 && parseInt(parsedDD) > 20) {
             mm -= 1;
             if (mm === 0) {
@@ -214,8 +206,6 @@ export default function GeneratorPage() {
             icao: parsedIcao,
             type: tafType,
             issueTime: parsedIssueH,
-            customHour: parsedIssueH,
-            customMinute: parsedIssueM,
             sequence: "A",
           }));
 
@@ -262,7 +252,6 @@ export default function GeneratorPage() {
           });
           setClouds(clds);
 
-          // Membedah Change Groups
           const cgs = [];
           for (let i = 2; i < lines.length; i++) {
             const cgTokens = lines[i].split(" ").filter(Boolean);
@@ -340,7 +329,7 @@ export default function GeneratorPage() {
       } catch (err) {
         showToast("Gagal memuat sandi TAF mentah", "error");
       }
-      sessionStorage.removeItem("edit_taf_raw"); // Bersihkan memori agar tidak bentrok
+      sessionStorage.removeItem("edit_taf_raw");
     }
   }, []);
 
@@ -358,14 +347,6 @@ export default function GeneratorPage() {
     const issueH = parseInt(headerData.issueTime) || 0;
     const refIssueTime = new Date(Date.UTC(yr, mo - 1, da, issueH, 0, 0));
     let finalStartObj = new Date(refIssueTime.getTime() + 60 * 60 * 1000);
-
-    if (headerData.type !== "NORMAL" && headerData.customValidStart) {
-      const customStartH = parseInt(headerData.customValidStart);
-      finalStartObj = new Date(refIssueTime);
-      finalStartObj.setUTCHours(customStartH);
-      if (customStartH < issueH)
-        finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
-    }
 
     finalStartObj.setUTCDate(finalStartObj.getUTCDate() + offsetDays);
     const yyyy = finalStartObj.getUTCFullYear();
@@ -391,14 +372,6 @@ export default function GeneratorPage() {
     const issueH = parseInt(headerData.issueTime) || 0;
     const refIssueTime = new Date(Date.UTC(yr, mo - 1, da, issueH, 0, 0));
     let finalStartObj = new Date(refIssueTime.getTime() + 60 * 60 * 1000);
-
-    if (headerData.type !== "NORMAL" && headerData.customValidStart) {
-      const customStartH = parseInt(headerData.customValidStart);
-      finalStartObj = new Date(refIssueTime);
-      finalStartObj.setUTCHours(customStartH);
-      if (customStartH < issueH)
-        finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
-    }
 
     finalStartObj.setUTCHours(finalStartObj.getUTCHours() + offsetHours);
     let hhNum = finalStartObj.getUTCHours();
@@ -784,14 +757,6 @@ export default function GeneratorPage() {
           finalStartObj.getTime() + 24 * 60 * 60 * 1000,
         );
 
-        if (header.type !== "NORMAL" && header.customValidStart) {
-          const customStartH = parseInt(header.customValidStart);
-          finalStartObj = new Date(refIssueTime);
-          finalStartObj.setUTCHours(customStartH);
-          if (customStartH < issueHourOriginal) {
-            finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
-          }
-        }
         const startMs = finalStartObj.getTime();
         const endMs = finalEndObj.getTime();
         const filteredData = result.data.filter(
@@ -828,14 +793,6 @@ export default function GeneratorPage() {
           finalStartObj.getTime() + 24 * 60 * 60 * 1000,
         );
 
-        if (header.type !== "NORMAL" && header.customValidStart) {
-          const customStartH = parseInt(header.customValidStart);
-          finalStartObj = new Date(refIssueTime);
-          finalStartObj.setUTCHours(customStartH);
-          if (customStartH < issueHourOriginal) {
-            finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
-          }
-        }
         const startMs = finalStartObj.getTime();
         const endMs = finalEndObj.getTime();
         const filteredData = result.data.filter(
@@ -1206,11 +1163,6 @@ export default function GeneratorPage() {
     return "";
   };
 
-  const currentValidStart =
-    header.type !== "NORMAL" && header.customValidStart
-      ? header.customValidStart.padStart(2, "0")
-      : ((parseInt(header.issueTime) + 1) % 24).toString().padStart(2, "0");
-
   const getEffectiveConditions = (currentIndex: number) => {
     let effVis = weather.visibility;
     let effWx = weather.wx;
@@ -1258,44 +1210,31 @@ export default function GeneratorPage() {
     const mainStartTime = new Date(refIssueTime.getTime() + 60 * 60 * 1000);
     const mainEndTime = new Date(mainStartTime.getTime() + 24 * 60 * 60 * 1000);
 
-    let finalStartObj = mainStartTime;
-    const finalEndObj = mainEndTime;
-
-    if (header.type !== "NORMAL" && header.customValidStart) {
-      const customStartH = parseInt(header.customValidStart);
-      finalStartObj = new Date(refIssueTime);
-      finalStartObj.setUTCHours(customStartH);
-      if (customStartH < issueHourOriginal) {
-        finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
-      }
-    }
-
     const dateDD = refIssueTime.getUTCDate().toString().padStart(2, "0");
-    const startDDStr = finalStartObj.getUTCDate().toString().padStart(2, "0");
-    const endDDStr = finalEndObj.getUTCDate().toString().padStart(2, "0");
-    const actualValidStartStr = finalStartObj
+    let startDDStr = mainStartTime.getUTCDate().toString().padStart(2, "0");
+    const endDDStr = mainEndTime.getUTCDate().toString().padStart(2, "0");
+    let actualValidStartStr = mainStartTime
       .getUTCHours()
       .toString()
       .padStart(2, "0");
-    const validEndStr = finalEndObj.getUTCHours().toString().padStart(2, "0");
+    const validEndStr = mainEndTime.getUTCHours().toString().padStart(2, "0");
 
-    let actualIssueHour = header.issueTime;
-    let actualIssueMinute = "00";
     let bbbStr = "";
-    if (header.type !== "NORMAL") {
-      bbbStr =
-        header.type === "AMD"
-          ? ` AA${header.sequence}`
-          : ` CC${header.sequence}`;
-      if (header.customHour)
-        actualIssueHour = header.customHour.padStart(2, "0");
-      if (header.customMinute)
-        actualIssueMinute = header.customMinute.padStart(2, "0");
-    }
-    const typeStr = header.type !== "NORMAL" ? `${header.type} ` : "";
+    let bodyType = "";
 
-    let tafString = `FTID40 ${header.icao} ${dateDD}${actualIssueHour}${actualIssueMinute}${bbbStr}\n`;
-    tafString += `TAF ${typeStr}${header.icao} ${dateDD}${actualIssueHour}${actualIssueMinute}Z ${startDDStr}${actualValidStartStr}/${endDDStr}${validEndStr} `;
+    if (header.type === "AMD") {
+      bbbStr = ` AA${header.sequence}`;
+      bodyType = "AMD ";
+    } else if (header.type === "COR") {
+      bbbStr = ` CC${header.sequence}`;
+      bodyType = "COR ";
+    } else if (header.type === "TERLAMBAT") {
+      bbbStr = ` RR${header.sequence}`;
+      bodyType = "AMD "; // Aturan pusat: Header RRA tapi body TAF AMD
+    }
+
+    let tafString = `FTID40 ${header.icao} ${dateDD}${header.issueTime}00${bbbStr}\n`;
+    tafString += `TAF ${bodyType}${header.icao} ${dateDD}${header.issueTime}00Z ${startDDStr}${actualValidStartStr}/${endDDStr}${validEndStr} `;
 
     if (weather.windDir && weather.windSpeed) {
       const gStr = weather.windGust ? `G${padWind(weather.windGust)}` : "";
@@ -1324,10 +1263,10 @@ export default function GeneratorPage() {
         const hStart = parseInt(cg.start);
         const hEnd = parseInt(cg.end);
 
-        if (!isNaN(hStart) && hStart < finalStartObj.getUTCHours())
+        if (!isNaN(hStart) && hStart < mainStartTime.getUTCHours())
           cgStartDD = endDDStr;
         if (!isNaN(hEnd) && !isNaN(hStart)) {
-          if (hEnd <= hStart || hEnd < finalStartObj.getUTCHours())
+          if (hEnd <= hStart || hEnd < mainStartTime.getUTCHours())
             cgEndDD = endDDStr;
         }
 
@@ -1440,6 +1379,7 @@ export default function GeneratorPage() {
                         <option value="NORMAL">Normal</option>
                         <option value="AMD">AMD</option>
                         <option value="COR">COR</option>
+                        <option value="TERLAMBAT">TERLAMBAT (RRA)</option>
                       </select>
                       {header.type !== "NORMAL" && (
                         <select
@@ -1458,29 +1398,7 @@ export default function GeneratorPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* Reminder AMD/COR sekarang ada di bawah dropdown secara rapi */}
-                  {header.type === "COR" && (
-                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
-                      <span>
-                        <strong>SOP Reminder (COR):</strong> Jika diterbitkan
-                        setelah TAF berjalan, awal validitas{" "}
-                        <strong>WAJIB</strong> diubah menjadi sisa periode.
-                      </span>
-                    </div>
-                  )}
-                  {header.type === "AMD" && (
-                    <div className="text-amber-700 font-medium text-[11px] flex items-start gap-1.5 bg-amber-100 p-2 rounded border border-amber-300">
-                      <Lightbulb className="w-4 h-4 min-w-[16px] text-amber-500 mt-0.5" />
-                      <span>
-                        <strong>SOP Reminder (AMD):</strong> Jam terbit TAF AMD{" "}
-                        <strong>WAJIB</strong> menggunakan waktu riil saat ini.
-                      </span>
-                    </div>
-                  )}
                 </div>
-
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">
                     ICAO
@@ -1499,63 +1417,6 @@ export default function GeneratorPage() {
                   />
                 </div>
               </div>
-
-              {header.type !== "NORMAL" && (
-                <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
-                  {/* Jam Terbit HANYA muncul untuk AMD */}
-                  {header.type === "AMD" && (
-                    <div>
-                      <label className="block text-xs font-bold text-amber-800 mb-1">
-                        Jam & Menit Terbit {header.type}
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Jam"
-                          maxLength={2}
-                          className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-                          value={header.customHour}
-                          onChange={(e) =>
-                            setHeader({ ...header, customHour: e.target.value })
-                          }
-                        />
-                        <input
-                          type="text"
-                          placeholder="Mnt"
-                          maxLength={2}
-                          className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-                          value={header.customMinute}
-                          onChange={(e) =>
-                            setHeader({
-                              ...header,
-                              customMinute: e.target.value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {/* Mulai Validitas menyesuaikan lebar jika COR */}
-                  <div className={header.type === "COR" ? "md:col-span-2" : ""}>
-                    <label className="block text-xs font-bold text-amber-800 mb-1">
-                      Mulai Validitas (Sisa)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Jam Mulai"
-                      maxLength={2}
-                      className="w-full border border-amber-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-                      value={header.customValidStart}
-                      onChange={(e) =>
-                        setHeader({
-                          ...header,
-                          customValidStart: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1773,6 +1634,14 @@ export default function GeneratorPage() {
             </div>
             {changeGroups.map((cg, idx) => {
               const eff = getEffectiveConditions(idx);
+              const mainStartStr = new Date(
+                new Date(header.date).setUTCHours(
+                  parseInt(header.issueTime) + 1,
+                ),
+              )
+                .getUTCHours()
+                .toString()
+                .padStart(2, "0");
               return (
                 <div
                   key={idx}
@@ -1822,7 +1691,7 @@ export default function GeneratorPage() {
                     cg.indicator,
                     cg.start,
                     cg.end,
-                    currentValidStart,
+                    mainStartStr,
                   ) && (
                     <div className="mb-3 text-red-600 font-medium text-xs flex items-center gap-1 bg-red-100 p-2 rounded border border-red-300">
                       <AlertTriangle className="w-4 h-4 min-w-[16px]" />{" "}
@@ -1831,7 +1700,7 @@ export default function GeneratorPage() {
                           cg.indicator,
                           cg.start,
                           cg.end,
-                          currentValidStart,
+                          mainStartStr,
                         )}
                       </span>
                     </div>
@@ -2853,7 +2722,7 @@ export default function GeneratorPage() {
           <div className="relative w-full max-w-5xl flex-1 flex items-center justify-center overflow-auto rounded-xl border border-slate-800 bg-black/50">
             {/* KONTROL ZOOM MENGAMBANG */}
             {!modalError && (
-              <div className="absolute bottom-6 right-6 flex items-center gap-2 z-[110] bg-slate-900/80 p-2 rounded-full border border-slate-700 backdrop-blur-md">
+              <div className="absolute bottom-6 right-6 flex items-center gap-2 z-[110] bg-slate-900/80 p-2 rounded-full border border-slate-700 backdrop-blur-md shadow-xl">
                 <button
                   onClick={() => setZoomScale((p) => Math.max(0.5, p - 0.3))}
                   className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white transition-colors"
@@ -2875,7 +2744,7 @@ export default function GeneratorPage() {
             )}
 
             {modalError ? (
-              <div className="text-slate-400 text-lg flex flex-col items-center gap-3">
+              <div className="text-slate-400 text-lg flex flex-col items-center justify-center h-full gap-3 p-4">
                 <AlertTriangle className="w-12 h-12 text-slate-500" />
                 <p>
                   Gambar untuk {modalInfo.displayDate} tidak tersedia di server
@@ -2883,18 +2752,20 @@ export default function GeneratorPage() {
                 </p>
               </div>
             ) : (
-              <div className="w-full h-full flex items-center justify-center p-4">
+              <div
+                className={`w-full h-full overflow-auto flex ${zoomScale > 1 ? "items-start justify-start" : "items-center justify-center"} p-4`}
+              >
                 <img
                   key={modalInfo.url}
                   src={modalInfo.url}
                   alt={modalTitle}
                   style={{
-                    transform: `scale(${zoomScale})`,
-                    transition:
-                      "transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                    transformOrigin: "center center",
+                    width: zoomScale > 1 ? `${zoomScale * 100}%` : "auto",
+                    maxWidth: zoomScale <= 1 ? "100%" : "none",
+                    maxHeight: zoomScale <= 1 ? "100%" : "none",
+                    transition: "width 0.2s ease-out",
                   }}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl bg-white cursor-grab active:cursor-grabbing"
+                  className="object-contain rounded-lg shadow-2xl bg-white cursor-grab active:cursor-grabbing"
                   onDoubleClick={() => setZoomScale((p) => (p === 1 ? 2 : 1))}
                   onError={() => {
                     if (lightbox.type === "STREAMLINE")
