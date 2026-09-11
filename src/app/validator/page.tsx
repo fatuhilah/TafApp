@@ -76,7 +76,9 @@ export default function ValidatorPage() {
       });
     }
 
-    // --- TOKEN SCANNER: DETEKSI TYPO DAN CUACA TIDAK VALID ---
+    // --- FIX: BERSIHKAN TANDA '=' DARI MEMORI AGAR TIDAK MERUSAK REGEX (Spt: BR=) ---
+    text = text.replace(/=/g, "");
+
     // --- TOKEN SCANNER: DETEKSI TYPO DAN CUACA TIDAK VALID ---
     const validWxCodes = [
       "DZ",

@@ -164,6 +164,7 @@ export default function GeneratorPage() {
     message: "",
     type: "success",
   });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // ENGINE AUTO-FILL DARI ARSIP (REVERSE-PARSER)
   useEffect(() => {
@@ -816,22 +817,116 @@ export default function GeneratorPage() {
     }
   };
 
-  const handleSaveToDatabase = async () => {
-    if (!header.date || !header.icao || !tafPreview)
-      return showToast("Data belum lengkap!", "warning");
-    if (!weather.windDir || !weather.windSpeed)
-      return showToast("SOP Error: Angin utama wajib diisi!", "error");
+  // VALIDASI PUSAT UNTUK BUTTON SAVE DAN COPY
+  const checkAllValidations = () => {
+    let hasError = false;
+    let hasWarning = false;
+
+    if (
+      !header.date ||
+      !header.icao ||
+      !tafPreview ||
+      tafPreview.includes("Lengkapi")
+    )
+      hasError = true;
+    if (!weather.windDir || !weather.windSpeed) hasError = true;
     if (!weather.isCavok) {
-      if (!weather.visibility)
-        return showToast("SOP Error: Visibilitas utama wajib diisi!", "error");
-      if (!clouds[0].amount)
-        return showToast("SOP Error: Awan utama wajib diisi!", "error");
+      if (!weather.visibility) hasError = true;
+      if (!clouds[0].amount) hasError = true;
     }
+
+    if (validateWxVis(weather.wx, weather.visibility)) hasError = true;
+    if (
+      getBaseWarnings(weather.visibility, weather.wx, clouds, changeGroups)
+        .length > 0
+    )
+      hasWarning = true;
+
+    let mainStartStr = "";
+    if (header.date) {
+      const baseDate = new Date(header.date);
+      baseDate.setUTCHours(0, 0, 0, 0);
+      const refIssueTime = new Date(baseDate);
+      refIssueTime.setUTCHours(parseInt(header.issueTime) || 0);
+
+      let finalStartObj = new Date(refIssueTime.getTime() + 60 * 60 * 1000);
+      if (header.type !== "NORMAL" && header.customValidStart) {
+        const customStartH = parseInt(header.customValidStart);
+        finalStartObj = new Date(refIssueTime);
+        finalStartObj.setUTCHours(customStartH);
+        if (customStartH < (parseInt(header.issueTime) || 0)) {
+          finalStartObj.setUTCDate(finalStartObj.getUTCDate() + 1);
+        }
+      }
+      mainStartStr = finalStartObj.getUTCHours().toString().padStart(2, "0");
+    }
+
+    changeGroups.forEach((cg, idx) => {
+      const eff = getEffectiveConditions(idx);
+      if (validateDuration(cg.indicator, cg.start, cg.end, mainStartStr))
+        hasError = true;
+      if (
+        validateProgressiveWxVis(
+          eff.effWx,
+          cg.wx,
+          cg.hasWx,
+          eff.effVis,
+          cg.visibility,
+          cg.hasVis,
+        )
+      )
+        hasError = true;
+      if (cg.hasVis && validateCgVisibilityStrict(eff.effVis, cg.visibility))
+        hasError = true;
+      if (
+        cg.hasWind &&
+        validateCgWindStrict(
+          eff.effWindDir,
+          eff.effWindSpeed,
+          eff.effWindGust,
+          cg.windDir,
+          cg.windSpeed,
+          cg.windGust,
+        )
+      )
+        hasError = true;
+      if (
+        cg.hasCloud &&
+        validateCgCloudStrict(
+          cg.cloudAmount,
+          cg.cloudHeight,
+          cg.cloudType,
+          eff.effClouds,
+        )
+      )
+        hasError = true;
+
+      if (getCgWarnings(cg, eff).length > 0) hasWarning = true;
+    });
+
+    return { hasError, hasWarning };
+  };
+
+  const handleCopy = () => {
+    const { hasError } = checkAllValidations();
+
+    if (hasError) {
+      return showToast("Masih ada kesalahan, cek kembali", "error");
+    }
+
+    navigator.clipboard.writeText(tafPreview);
+    showToast("Sandi TAF berhasil disalin ke clipboard!", "success");
+  };
+
+  // Fungsi utama untuk nembak ke Database (Dipanggil kalau aman / kalau user klik 'Ya' di modal)
+  const executeSave = async () => {
+    setShowConfirmModal(false); // Tutup modal dulu
 
     const issueTimeMatch = tafPreview.match(/[A-Z]{4}\s+(\d{6})[A-Z]?\s/);
     const validityMatch = tafPreview.match(/Z\s+(\d{4}\/\d{4})/);
     if (!issueTimeMatch || !validityMatch)
       return showToast("Sandi tidak valid.", "error");
+
     try {
       const response = await fetch("/api/taf", {
         method: "POST",
@@ -850,6 +945,24 @@ export default function GeneratorPage() {
     } catch {
       showToast("Error jaringan.", "error");
     }
+  };
+
+  // Fungsi yang nempel di tombol "Simpan"
+  const handleSaveToDatabase = () => {
+    const { hasError, hasWarning } = checkAllValidations();
+
+    if (hasError) {
+      return showToast("Masih ada kesalahan, cek kembali", "error");
+    }
+
+    if (hasWarning) {
+      // Tampilkan Modal Custom yang keren, BUKAN window.confirm bawaan browser
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // Kalau lulus semua (no error, no warning), langsung eksekusi simpan
+    executeSave();
   };
 
   const addCloud = () => {
@@ -1358,8 +1471,88 @@ export default function GeneratorPage() {
         </div>
       </div>
 
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* BACKDROP */}
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setShowConfirmModal(false)}
+          />
+
+          {/* MODAL */}
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            {/* HEADER */}
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-amber-600" />
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Warning Meteorologis
+                  </h3>
+
+                  <p className="text-sm text-amber-800 mt-1 font-medium">
+                    Perhatian sebelum menyimpan
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* BODY */}
+            <div className="px-6 py-6">
+              <p className="text-slate-700 leading-relaxed">
+                Terdapat{" "}
+                <span className="font-bold text-amber-600">Warning</span> pada
+                sandi TAF Anda.
+              </p>
+
+              <p className="text-slate-700 leading-relaxed mt-2">
+                Apakah Anda tetap yakin ingin menyimpan sandi ini?
+              </p>
+
+              <div className="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="flex gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+
+                  <p className="text-sm text-amber-800">
+                    Pastikan Anda telah memeriksa kembali kondisi cuaca,
+                    visibilitas, awan, dan change group sebelum melanjutkan.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="flex justify-end items-center gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+              {/* BATAL */}
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Batal
+              </button>
+
+              {/* LANJUT SIMPAN */}
+              <button
+                type="button"
+                onClick={executeSave}
+                className="px-5 py-2.5 rounded-lg font-semibold text-white bg-amber-600 hover:bg-amber-700 shadow-sm hover:shadow-md transition-all flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Ya, Lanjut Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-blue-900">TAF Generator</h1>
+
         <button
           onClick={handleSaveToDatabase}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-sm transition-colors"
@@ -2050,31 +2243,7 @@ export default function GeneratorPage() {
                 Preview TAF
               </h3>
               <button
-                onClick={() => {
-                  if (!tafPreview || tafPreview.includes("Lengkapi")) return;
-                  if (!weather.windDir || !weather.windSpeed)
-                    return showToast(
-                      "SOP Error: Angin utama wajib diisi!",
-                      "error",
-                    );
-                  if (!weather.isCavok) {
-                    if (!weather.visibility)
-                      return showToast(
-                        "SOP Error: Visibilitas utama wajib diisi!",
-                        "error",
-                      );
-                    if (!clouds[0].amount)
-                      return showToast(
-                        "SOP Error: Awan utama wajib diisi!",
-                        "error",
-                      );
-                  }
-                  navigator.clipboard.writeText(tafPreview);
-                  showToast(
-                    "Sandi TAF berhasil disalin ke clipboard!",
-                    "success",
-                  );
-                }}
+                onClick={handleCopy}
                 className="text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border border-blue-100"
               >
                 <Copy className="w-4 h-4" /> Salin
