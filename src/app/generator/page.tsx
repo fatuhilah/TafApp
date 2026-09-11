@@ -64,12 +64,15 @@ const WX_OPTIONS_MAIN = [
   { value: "-SHRA", label: "-SHRA (Light Shower)" },
   { value: "SHRA", label: "SHRA (Moderate Shower)" },
   { value: "+SHRA", label: "+SHRA (Heavy Shower)" },
+  { value: "VCSH", label: "VCSH (Vicinity Showers)" },
   { value: "TS", label: "TS (Thunderstorm Tanpa Hujan)" },
-  { value: "-TS", label: "-TS (Light Thunderstorm)" },
-  { value: "+TS", label: "+TS (Heavy Thunderstorm)" },
   { value: "-TSRA", label: "-TSRA (Thunderstorm w/ Light Rain)" },
   { value: "TSRA", label: "TSRA (Thunderstorm w/ Rain)" },
   { value: "+TSRA", label: "+TSRA (Thunderstorm w/ Heavy Rain)" },
+  { value: "VCTS", label: "VCTS (Vicinity Thunderstorm)" },
+  { value: "VCTS -RA", label: "VCTS -RA (Vicinity TS w/ Light Rain)" },
+  { value: "VCTS RA", label: "VCTS RA (Vicinity TS w/ Mod Rain)" },
+  { value: "VCTS +RA", label: "VCTS +RA (Vicinity TS w/ Heavy Rain)" },
   { value: "FZFG", label: "FZFG (Freezing Fog)" },
   { value: "SQ", label: "SQ (Squall)" },
   { value: "FC", label: "FC (Funnel Cloud / Tornado)" },
@@ -945,6 +948,19 @@ export default function GeneratorPage() {
       }
     }
 
+    // --- WARNING BARU: ADA CB TAPI TIDAK ADA CUACA ---
+    const isMainConvectiveWx =
+      wx.includes("TS") ||
+      wx.includes("SH") ||
+      wx.includes("RA") ||
+      wx.includes("VC");
+    const hasCb = baseClouds.some((c) => c.type === "CB");
+    if (hasCb && !isMainConvectiveWx) {
+      warnings.push(
+        `Meteorological Warning: Terdapat awan Cumulonimbus (CB) tapi tidak ada sandi cuaca hujan atau petir (seperti RA, TS, VCTS, SHRA, atau VCSH) yang menyertainya. Yakin awan CB ini tidak menghasilkan cuaca signifikan sama sekali di area bandara? Kalau yakin ya lanjut aja.`,
+      );
+    }
+
     // PERBAIKAN: Beri toleransi (pengecualian) untuk Hujan (RA) dan Petir (TS)
     const visNum = parseInt(vis);
     if (
@@ -977,18 +993,29 @@ export default function GeneratorPage() {
         ? parseInt(cg.visibility)
         : parseInt(eff.effVis) || 9999;
 
-    if (checkWx.includes("TS")) {
-      let hasCb = false;
-      if (cg.hasCloud && cg.cloudAmount !== "NSC") {
-        hasCb = cg.cloudType === "CB";
-      } else if (!cg.hasCloud) {
-        hasCb = eff.effClouds.some((c: any) => c.type === "CB");
-      }
-      if (!hasCb) {
-        warnings.push(
-          `Meteorological Warning: Terdapat sandi petir (${checkWx}) tapi tidak ada awan CB yang aktif. Pastikan menambahkan/mengubah tipe awan menjadi CB.`,
-        );
-      }
+    let hasCb = false;
+    if (cg.hasCloud && cg.cloudAmount !== "NSC") {
+      hasCb = cg.cloudType === "CB";
+    } else if (!cg.hasCloud) {
+      hasCb = eff.effClouds.some((c: any) => c.type === "CB");
+    }
+
+    if (checkWx.includes("TS") && !hasCb) {
+      warnings.push(
+        `Meteorological Warning (${cg.indicator}): Terdapat sandi petir (${checkWx}) tapi tidak ada awan CB yang aktif. Pastikan menambahkan/mengubah tipe awan menjadi CB.`,
+      );
+    }
+
+    // --- WARNING BARU: ADA CB TAPI TIDAK ADA CUACA ---
+    const isCgConvectiveWx =
+      checkWx.includes("TS") ||
+      checkWx.includes("SH") ||
+      checkWx.includes("RA") ||
+      checkWx.includes("VC");
+    if (hasCb && !isCgConvectiveWx) {
+      warnings.push(
+        `Meteorological Warning (${cg.indicator}): Awan Cumulonimbus (CB) sedang aktif, tapi tidak ada cuaca hujan atau petir (seperti RA, TS, VCTS, SHRA, atau VCSH) yang menyertainya. Yakin awan CB tidak menghasilkan cuaca signifikan?`,
+      );
     }
 
     // PERBAIKAN: Beri toleransi (pengecualian) untuk Hujan (RA) dan Petir (TS) di Change Group

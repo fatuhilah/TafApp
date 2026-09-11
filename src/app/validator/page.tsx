@@ -77,13 +77,12 @@ export default function ValidatorPage() {
     }
 
     // --- TOKEN SCANNER: DETEKSI TYPO DAN CUACA TIDAK VALID ---
+    // --- TOKEN SCANNER: DETEKSI TYPO DAN CUACA TIDAK VALID ---
     const validWxCodes = [
       "DZ",
       "RA",
       "SHRA",
-      "-TS",
       "TS",
-      "+TS",
       "TSRA",
       "BR",
       "FG",
@@ -100,6 +99,8 @@ export default function ValidatorPage() {
       "-TSRA",
       "+TSRA",
       "+SHRA",
+      "VCTS",
+      "VCSH",
     ];
     const icaoMatchForToken = text.match(/TAF\s+(?:AMD\s+|COR\s+)?([A-Z]{4})/);
     const icaoCodeToken = icaoMatchForToken ? icaoMatchForToken[1] : "";
@@ -257,10 +258,12 @@ export default function ValidatorPage() {
     }
 
     const wxRegexStr =
-      "\\b(DZ|RA|SHRA|TS|TSRA|BR|FG|HZ|FU|VA|SQ|FC|NSW|-DZ|-RA|-SHRA|\\+RA|\\+TSRA|\\+SHRA)\\b";
-    const wxRegex = new RegExp(wxRegexStr);
+      "(?:^|\\s)(DZ|RA|SHRA|TS|TSRA|BR|FG|HZ|FU|VA|SQ|FC|NSW|-DZ|-RA|-SHRA|\\+RA|\\+TSRA|\\+SHRA|VCTS|VCSH)(?=\\s|$)";
+    const wxRegex = new RegExp(wxRegexStr, "g");
     const mainWxMatch = mainSafeContent.match(wxRegex);
-    const mainWx = mainWxMatch ? mainWxMatch[0] : "";
+    const mainWx = mainWxMatch
+      ? mainWxMatch.map((w) => w.trim()).join(" ")
+      : "";
 
     const windMatch = mainSafeContent.match(
       /\b(VRB|\d{3})(\d{2})(?:G(\d{2}))?KT\b/,
@@ -341,6 +344,19 @@ export default function ValidatorPage() {
       warnings.push({
         type: "warning",
         message: `Meteorological Warning (Utama): Ada sandi petir (${mainWx}) tapi kok tidak ada awan CB? Yakin petir bisa terjadi tanpa awan Cumulonimbus?`,
+      });
+    }
+
+    // Peringatan jika ada CB tapi tidak ada hujan/petir/vicinity
+    const isMainConvectiveWx =
+      mainWx.includes("TS") ||
+      mainWx.includes("SH") ||
+      mainWx.includes("RA") ||
+      mainWx.includes("VC");
+    if (mainCloud.typ === "CB" && !isMainConvectiveWx) {
+      warnings.push({
+        type: "warning",
+        message: `Meteorological Warning (Utama): Terdapat awan Cumulonimbus (CB) tapi tidak ada sandi cuaca hujan atau petir (seperti RA, TS, VCTS, SHRA, atau VCSH) yang menyertainya. Yakin awan CB ini tidak menghasilkan cuaca signifikan sama sekali di area bandara dan akan selalu ada hingga akhir validitas? Kalau yakin ya lanjut aja.`,
       });
     }
 
@@ -449,7 +465,7 @@ export default function ValidatorPage() {
       }
 
       const cgWxMatch = cgSafeContent.match(wxRegex);
-      const cgWx = cgWxMatch ? cgWxMatch[0] : "";
+      const cgWx = cgWxMatch ? cgWxMatch.map((w) => w.trim()).join(" ") : "";
 
       // Evaluasi Visibilitas dibandingkan dengan EFFECTIVE VISIBILITY
       if (cgVisNum !== null) {
@@ -659,6 +675,19 @@ export default function ValidatorPage() {
         warnings.push({
           type: "warning",
           message: `Meteorological Warning (${indicator}): Terdapat sandi petir (${checkWx}) tapi awan yang sedang aktif bukan CB. Yakin petir terjadi tanpa awan Cumulonimbus? Pastikan untuk merubah tipe awan menjadi CB.`,
+        });
+      }
+
+      // Peringatan jika CB terbawa ke Change Group tapi tanpa cuaca
+      const isCgConvectiveWx =
+        checkWx.includes("TS") ||
+        checkWx.includes("SH") ||
+        checkWx.includes("RA") ||
+        checkWx.includes("VC");
+      if (hasActiveCb && !isCgConvectiveWx) {
+        warnings.push({
+          type: "warning",
+          message: `Meteorological Warning (${indicator}): Awan Cumulonimbus (CB) sedang aktif, tapi tidak ada cuaca hujan atau petir (seperti RA, TS, VCTS, SHRA, atau VCSH) yang menyertainya. Yakin awan CB tidak menghasilkan cuaca signifikan? Kalau yakin ya lanjut aja.`,
         });
       }
 
