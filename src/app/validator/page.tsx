@@ -304,6 +304,33 @@ export default function ValidatorPage() {
           : "";
     }
 
+    // --- TAMBAHAN: VALIDASI KELENGKAPAN BASE CONDITION (MANDATORY) ---
+    const isMainCavok = mainSection.includes("CAVOK");
+
+    if (!isMainCavok) {
+      // Cek apakah visibilitas 4 digit benar-benar diketik
+      const hasMainVisToken = /\b\d{4}\b/.test(mainSafeContent);
+      if (!hasMainVisToken) {
+        errors.push({
+          type: "error",
+          message:
+            "SOP Error (Utama): Visibilitas tidak ditemukan. Kondisi utama (Base Condition) WAJIB mencantumkan visibilitas (contoh: 9999) atau gunakan CAVOK.",
+        });
+      }
+
+      // Cek apakah sandi awan atau NSC benar-benar diketik
+      const hasMainCloudToken =
+        /\b(FEW|SCT|BKN|OVC)\d{3}(?:CB|TCU)?\b/.test(mainSafeContent) ||
+        mainSafeContent.includes("NSC");
+      if (!hasMainCloudToken) {
+        errors.push({
+          type: "error",
+          message:
+            "SOP Error (Utama): Kelompok awan tidak ditemukan. Kondisi utama (Base Condition) WAJIB mencantumkan sandi awan (contoh: SCT020), NSC, atau gunakan CAVOK.",
+        });
+      }
+    }
+
     // Validasi Wx & Vis Utama
     if (mainVis < 5000 && !mainWx && !mainSection.includes("CAVOK")) {
       errors.push({

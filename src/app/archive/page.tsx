@@ -10,6 +10,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -29,6 +33,18 @@ export default function ArchivePage() {
   // STATE UNTUK MODAL HAPUS
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // STATE FILTER & PAGINATION
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterDay, setFilterDay] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+
+  // Reset page ke 1 setiap kali filter atau limit berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterDay, filterMonth, filterYear, itemsPerPage]);
 
   useEffect(() => {
     fetchTafs();
@@ -99,6 +115,64 @@ export default function ArchivePage() {
     router.push("/generator");
   };
 
+  // --- LOGIKA FILTERING (Asumsi database punya field 'created_at') ---
+  const filteredTafs = tafs.filter((taf) => {
+    // Kalau nggak ada timestamp dari DB, fallback aman pakai waktu sekarang (atau sesuaikan)
+    const dateObj = new Date(taf.created_at || Date.now());
+    const day = dateObj.getDate().toString().padStart(2, "0");
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+    const year = dateObj.getFullYear().toString();
+
+    if (filterDay && filterDay !== day) return false;
+    if (filterMonth && filterMonth !== month) return false;
+    if (filterYear && filterYear !== year) return false;
+    return true;
+  });
+
+  // --- LOGIKA PAGINATION ---
+  const totalPages = Math.max(1, Math.ceil(filteredTafs.length / itemsPerPage));
+  const paginatedTafs = filteredTafs.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  // --- LOGIKA DOWNLOAD CSV ---
+  const handleDownloadCSV = () => {
+    if (filteredTafs.length === 0) {
+      showToast("Tidak ada data untuk didownload", "warning");
+      return;
+    }
+
+    const headers = [
+      "ICAO",
+      "Tanggal",
+      "Bulan",
+      "Tahun",
+      "Validitas",
+      "Jenis",
+      "Sandi TAF",
+    ];
+    const csvContent = [
+      headers.join(","),
+      ...filteredTafs.map((t) => {
+        const d = new Date(t.created_at || Date.now());
+        const day = d.getDate().toString().padStart(2, "0");
+        const month = (d.getMonth() + 1).toString().padStart(2, "0");
+        const year = d.getFullYear().toString();
+        // Bersihkan tanda kutip ganda dari TAF agar format CSV tidak rusak
+        const cleanTaf = t.raw_taf.replace(/"/g, '""');
+        return `\({t.icao_code},\){day},\({month},\){year},\({t.validity},\){t.type},"${cleanTaf}"`;
+      }),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Arsip_TAF_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    showToast("File CSV berhasil didownload!", "success");
+  };
+
   return (
     <div className="flex flex-col h-full gap-6 relative">
       {/* TOAST NOTIFICATION MODERN */}
@@ -165,18 +239,128 @@ export default function ArchivePage() {
         </div>
       )}
 
+      {/* HEADER */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-blue-900 flex items-center gap-3">
           <Archive className="w-8 h-8 text-blue-600" />
           Arsip TAF
         </h1>
-        <button
-          onClick={fetchTafs}
-          className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
-          title="Segarkan Data"
-        >
-          <RefreshCw className="w-5 h-5" />
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Tombol CSV */}
+          <button
+            onClick={handleDownloadCSV}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm"
+            title="Download CSV"
+          >
+            <Download className="w-5 h-5" />
+            <span className="font-medium">CSV</span>
+          </button>
+
+          {/* Tombol Refresh */}
+          <button
+            onClick={fetchTafs}
+            className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors"
+            title="Segarkan Data"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* BARIS FILTER */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Filter Hari */}
+          <select
+            value={filterDay}
+            onChange={(e) => setFilterDay(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Semua Hari</option>
+            {Array.from({ length: 31 }, (_, i) => {
+              const day = String(i + 1).padStart(2, "0");
+              return (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              );
+            })}
+          </select>
+
+          {/* Filter Bulan */}
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Semua Bulan</option>
+            {[
+              ["01", "Januari"],
+              ["02", "Februari"],
+              ["03", "Maret"],
+              ["04", "April"],
+              ["05", "Mei"],
+              ["06", "Juni"],
+              ["07", "Juli"],
+              ["08", "Agustus"],
+              ["09", "September"],
+              ["10", "Oktober"],
+              ["11", "November"],
+              ["12", "Desember"],
+            ].map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+
+          {/* Filter Tahun */}
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Semua Tahun</option>
+            {Array.from(
+              new Set(
+                tafs.map((taf) => {
+                  const date = new Date(taf.created_at || Date.now());
+                  return date.getFullYear().toString();
+                }),
+              ),
+            )
+              .sort((a, b) => Number(b) - Number(a))
+              .map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+          </select>
+
+          {/* Reset Filter */}
+          {(filterDay || filterMonth || filterYear) && (
+            <button
+              onClick={() => {
+                setFilterDay("");
+                setFilterMonth("");
+                setFilterYear("");
+              }}
+              className="px-3 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Reset Filter
+            </button>
+          )}
+
+          {/* Info hasil filter */}
+          <div className="ml-auto text-sm text-slate-500">
+            Menampilkan{" "}
+            <span className="font-bold text-slate-700">
+              {filteredTafs.length}
+            </span>{" "}
+            data
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
@@ -203,7 +387,7 @@ export default function ArchivePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tafs.map((taf) => (
+                {paginatedTafs.map((taf) => (
                   <tr
                     key={taf.id}
                     className="hover:bg-slate-50 transition-colors"
@@ -267,6 +451,89 @@ export default function ArchivePage() {
                 ))}
               </tbody>
             </table>
+
+            {/* PAGINATION */}
+            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 border-t border-slate-200 bg-slate-50">
+              {/* INFO DATA */}
+              <div className="text-sm text-slate-500">
+                Menampilkan{" "}
+                <span className="font-semibold text-slate-700">
+                  {filteredTafs.length === 0
+                    ? 0
+                    : (currentPage - 1) * itemsPerPage + 1}
+                </span>
+                {" - "}
+                <span className="font-semibold text-slate-700">
+                  {Math.min(currentPage * itemsPerPage, filteredTafs.length)}
+                </span>
+                {" dari "}
+                <span className="font-semibold text-slate-700">
+                  {filteredTafs.length}
+                </span>{" "}
+                data
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* DATA PER HALAMAN */}
+                <div className="flex items-center gap-2 mr-2">
+                  <span className="text-sm text-slate-500">Tampil:</span>
+
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+
+                {/* PREVIOUS */}
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Halaman sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* NOMOR HALAMAN */}
+                <div className="flex items-center gap-1">
+                  {Array.from(
+                    { length: totalPages },
+                    (_, index) => index + 1,
+                  ).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-9 h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                {/* NEXT */}
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={totalPages === 0 || currentPage === totalPages}
+                  className="p-2 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Halaman berikutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
