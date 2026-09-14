@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Download,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -135,44 +134,6 @@ export default function ArchivePage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
-
-  // --- LOGIKA DOWNLOAD CSV ---
-  const handleDownloadCSV = () => {
-    if (filteredTafs.length === 0) {
-      showToast("Tidak ada data untuk didownload", "warning");
-      return;
-    }
-
-    const headers = [
-      "ICAO",
-      "Tanggal",
-      "Bulan",
-      "Tahun",
-      "Validitas",
-      "Jenis",
-      "Sandi TAF",
-    ];
-    const csvContent = [
-      headers.join(","),
-      ...filteredTafs.map((t) => {
-        const d = new Date(t.created_at || Date.now());
-        const day = d.getDate().toString().padStart(2, "0");
-        const month = (d.getMonth() + 1).toString().padStart(2, "0");
-        const year = d.getFullYear().toString();
-        // Bersihkan tanda kutip ganda dari TAF agar format CSV tidak rusak
-        const cleanTaf = t.raw_taf.replace(/"/g, '""');
-        return `\({t.icao_code},\){day},\({month},\){year},\({t.validity},\){t.type},"${cleanTaf}"`;
-      }),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `Arsip_TAF_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
-    showToast("File CSV berhasil didownload!", "success");
-  };
-
   return (
     <div className="flex flex-col h-full gap-6 relative">
       {/* TOAST NOTIFICATION MODERN */}
@@ -247,16 +208,6 @@ export default function ArchivePage() {
         </h1>
 
         <div className="flex items-center gap-2">
-          {/* Tombol CSV */}
-          <button
-            onClick={handleDownloadCSV}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm"
-            title="Download CSV"
-          >
-            <Download className="w-5 h-5" />
-            <span className="font-medium">CSV</span>
-          </button>
-
           {/* Tombol Refresh */}
           <button
             onClick={fetchTafs}
