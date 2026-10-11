@@ -1214,6 +1214,7 @@ export default function GeneratorPage() {
       checkVis < 1000 &&
       !checkWx.includes("FG") &&
       !checkWx.includes("RA") &&
+      !checkWx.includes("FU") &&
       !checkWx.includes("TS")
     ) {
       warnings.push(
