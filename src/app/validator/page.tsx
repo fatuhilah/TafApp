@@ -433,11 +433,12 @@ export default function ValidatorPage() {
       mainVis < 1000 &&
       !mainWx.includes("FG") &&
       !mainWx.includes("RA") &&
+      !mainWx.includes("FU") &&
       !mainWx.includes("TS")
     ) {
       warnings.push({
         type: "warning",
-        message: `Meteorological Warning (Utama): Visibilitas sangat rendah (${mainVisStr}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan sangat lebat. Yakin cuaca yang disandikan adalah '${mainWx || "tidak ada"}'? Kalau yakin ya lanjut aja.`,
+        message: `Meteorological Warning (Utama): Visibilitas sangat rendah (${mainVisStr}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG), Asap (FU), atau hujan sangat lebat. Yakin cuaca yang disandikan adalah '${mainWx || "tidak ada"}'? Kalau yakin ya lanjut aja.`,
       });
     }
 

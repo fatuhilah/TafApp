@@ -1160,10 +1160,11 @@ export default function GeneratorPage() {
       visNum < 1000 &&
       !wx.includes("FG") &&
       !wx.includes("RA") &&
+      !wx.includes("FU") &&
       !wx.includes("TS")
     ) {
       warnings.push(
-        `Meteorological Warning: Visibilitas sangat rendah (${visNum}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG) atau hujan lebat. Yakin cuaca yang disandikan bukan FG/Hujan Lebat?`,
+        `Meteorological Warning: Visibilitas sangat rendah (${visNum}m). Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut tebal (FG), Asap, atau hujan lebat. Yakin cuaca yang disandikan bukan FG/Hujan Lebat?`,
       );
     }
 
