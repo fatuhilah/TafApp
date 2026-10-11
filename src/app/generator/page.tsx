@@ -1695,7 +1695,7 @@ export default function GeneratorPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[80vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-h-[95vh]">
         {/* KOLOM KIRI */}
         <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-10">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -2560,7 +2560,7 @@ export default function GeneratorPage() {
         </div>
       </div>
 
-      <div className="mt-8 border-t border-slate-200 pt-6">
+      <div className="hidden mt-8 border-t border-slate-200 pt-6">
         <h2 className="text-xl font-semibold mb-6 flex items-center gap-2 text-blue-900">
           <MapPin className="w-5 h-5" /> 4. Peta Cuaca & Indeks BMKG
         </h2>
