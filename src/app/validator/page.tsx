@@ -26,6 +26,43 @@ export default function ValidatorPage() {
 
     const errors: { type: string; message: string }[] = [];
     const warnings: { type: string; message: string }[] = [];
+
+    // --- VALIDASI URUTAN LAPISAN AWAN ---
+    // Kelompok awan harus ditulis dari dasar terendah ke tertinggi.
+    // Tinggi dalam sandi FEW/SCT/BKN/OVC dinyatakan dalam ratusan kaki.
+    const validateCloudOrder = (
+      sectionContent: string,
+      sectionLabel: string,
+    ) => {
+      const cloudRegex = /\b(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?\b/g;
+      const cloudGroups: { code: string; height: number }[] = [];
+      let match: RegExpExecArray | null;
+
+      while ((match = cloudRegex.exec(sectionContent)) !== null) {
+        cloudGroups.push({
+          code: match[0],
+          height: parseInt(match[2], 10),
+        });
+      }
+
+      for (let i = 1; i < cloudGroups.length; i++) {
+        const previous = cloudGroups[i - 1];
+        const current = cloudGroups[i];
+
+        if (current.height < previous.height) {
+          errors.push({
+            type: "error",
+            message:
+              `SOP Error (${sectionLabel}): Urutan kelompok awan tidak sesuai. ` +
+              `${current.code} (dasar ${current.height * 100} ft) ditulis setelah ` +
+              `${previous.code} (dasar ${previous.height * 100} ft), padahal ` +
+              `dasar awan tersebut lebih rendah. Urutkan kelompok awan dari ` +
+              `dasar terendah ke tertinggi.`,
+          });
+        }
+      }
+    };
+
     let originalText = rawTaf.toUpperCase().replace(/\s+/g, " ").trim();
 
     // --- MENGABAIKAN HEADER WMO & MENANGKAP INDIKATOR BBB ---
@@ -243,6 +280,9 @@ export default function ValidatorPage() {
     const mainSafeContent = mainSection
       .replace(/\b\d{4}\/\d{4}\b/g, "")
       .replace(/\b\d{6}Z\b/g, "");
+
+    // Periksa urutan seluruh kelompok awan pada kondisi utama.
+    validateCloudOrder(mainSafeContent, "Utama");
 
     const mainDigitsMatches = mainSafeContent.match(/\b\d+\b/g) || [];
     let mainVis = 9999;
@@ -476,6 +516,9 @@ export default function ValidatorPage() {
       }
 
       const cgSafeContent = content.replace(/\b\d{4}\/\d{4}\b/g, "");
+
+      // Periksa urutan seluruh kelompok awan di setiap Change Group.
+      validateCloudOrder(cgSafeContent, indicator);
 
       const cgDigitsMatches = cgSafeContent.match(/\b\d+\b/g) || [];
       let cgVisNum: number | null = null;
@@ -780,7 +823,7 @@ export default function ValidatorPage() {
         <div className="flex items-center gap-2 mb-2">
           <FileText className="w-5 h-5 text-slate-500" />
           <h2 className="text-xl font-bold text-slate-800">
-            Masukkan Sandi TAF Mentah
+            Masukkan Sandi TAF
           </h2>
         </div>
         <p className="text-sm text-slate-500 mb-6">

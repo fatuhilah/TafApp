@@ -276,10 +276,9 @@ export default function GeneratorPage() {
               cgWspd = "",
               cgWgst = "",
               cgVis = "",
-              cgWx = "",
-              cgAmt = "",
-              cgHt = "",
-              cgTyp = "";
+              cgWx = "";
+
+            let cgClouds: any[] = [];
             let hW = false,
               hV = false,
               hX = false,
@@ -300,14 +299,18 @@ export default function GeneratorPage() {
                 cgWx = t;
               } else if (t === "NSC") {
                 hC = true;
-                cgAmt = "NSC";
+                cgClouds = [{ amount: "NSC", height: "", type: "" }];
               } else if (/^(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?$/.test(t)) {
                 hC = true;
+
                 const m = t.match(/^(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?$/);
-                if (m) {
-                  cgAmt = m[1];
-                  cgHt = m[2];
-                  cgTyp = m[3] || "";
+
+                if (m && !cgClouds.some((c: any) => c.amount === "NSC")) {
+                  cgClouds.push({
+                    amount: m[1],
+                    height: m[2],
+                    type: m[3] || "",
+                  });
                 }
               }
             }
@@ -324,9 +327,10 @@ export default function GeneratorPage() {
               hasWx: hX,
               wx: cgWx,
               hasCloud: hC,
-              cloudAmount: cgAmt,
-              cloudHeight: cgHt,
-              cloudType: cgTyp,
+              clouds:
+                cgClouds.length > 0
+                  ? cgClouds
+                  : [{ amount: "", height: "", type: "" }],
             });
           }
           setChangeGroups(cgs);
@@ -833,6 +837,9 @@ export default function GeneratorPage() {
     if (!weather.isCavok) {
       if (!weather.visibility) hasError = true;
       if (!clouds[0].amount) hasError = true;
+      if (validateCloudOrder(clouds)) {
+        hasError = true;
+      }
     }
 
     if (validateWxVis(weather.wx, weather.visibility)) hasError = true;
@@ -892,14 +899,10 @@ export default function GeneratorPage() {
         hasError = true;
       if (
         cg.hasCloud &&
-        validateCgCloudStrict(
-          cg.cloudAmount,
-          cg.cloudHeight,
-          cg.cloudType,
-          eff.effClouds,
-        )
-      )
+        validateCgCloudLayersStrict(cg.clouds ?? [], eff.effClouds)
+      ) {
         hasError = true;
+      }
 
       if (getCgWarnings(cg, eff).length > 0) hasWarning = true;
     });
@@ -994,9 +997,7 @@ export default function GeneratorPage() {
           hasWx: false,
           wx: "",
           hasCloud: false,
-          cloudAmount: "",
-          cloudHeight: "",
-          cloudType: "",
+          clouds: [{ amount: "", height: "", type: "" }],
         },
       ]);
   };
@@ -1008,8 +1009,87 @@ export default function GeneratorPage() {
     setChangeGroups(newG);
   };
 
+  const addCgCloud = (cgIndex: number) => {
+    const newG = [...changeGroups];
+    if (newG[cgIndex].clouds.length < 4) {
+      newG[cgIndex].clouds.push({ amount: "", height: "", type: "" });
+      setChangeGroups(newG);
+    }
+  };
+
+  const removeCgCloud = (cgIndex: number, cloudIndex: number) => {
+    const newG = [...changeGroups];
+    newG[cgIndex].clouds = newG[cgIndex].clouds.filter(
+      (_: any, i: number) => i !== cloudIndex,
+    );
+    setChangeGroups(newG);
+  };
+
+  const updateCgCloud = (
+    cgIndex: number,
+    cloudIndex: number,
+    field: string,
+    value: string,
+  ) => {
+    const newG = [...changeGroups];
+    newG[cgIndex].clouds[cloudIndex] = {
+      ...newG[cgIndex].clouds[cloudIndex],
+      [field]: value,
+    };
+    setChangeGroups(newG);
+  };
+
   const padWind = (val: string) => (val ? val.padStart(2, "0") : "");
   const padCloud = (val: string) => (val ? val.padStart(3, "0") : "");
+
+  const validateCloudOrder = (cloudList: any[] = []) => {
+    // Ambil hanya lapisan awan yang sudah memiliki
+    // jumlah dan tinggi dasar yang valid.
+    const layers = (cloudList ?? [])
+      .map((cloud: any, index: number) => ({
+        cloud,
+        index,
+      }))
+      .filter(({ cloud }) => {
+        const height = String(cloud?.height ?? "").trim();
+
+        return (
+          Boolean(cloud?.amount) &&
+          cloud.amount !== "NSC" &&
+          /^\d{1,3}$/.test(height)
+        );
+      });
+
+    const cloudLabel = (cloud: any) =>
+      `${cloud.amount}${String(cloud.height).padStart(3, "0")}${cloud.type || ""}`;
+
+    // Periksa urutan dari baris pertama ke baris terakhir.
+    for (let i = 1; i < layers.length; i++) {
+      const previous = layers[i - 1];
+      const current = layers[i];
+
+      const previousHeight = Number(previous.cloud.height);
+      const currentHeight = Number(current.cloud.height);
+
+      // Sandi ketinggian yang lebih kecil berarti dasar awannya
+      // lebih rendah, misalnya 015 < 020.
+      if (currentHeight < previousHeight) {
+        const previousFt = previousHeight * 100;
+        const currentFt = currentHeight * 100;
+
+        return (
+          `SOP Error: Urutan kelompok awan tidak sesuai. ` +
+          `Lapisan ke-${current.index + 1} ` +
+          `(${cloudLabel(current.cloud)}, dasar ${currentFt} ft) ` +
+          `memiliki dasar lebih rendah daripada lapisan ke-${previous.index + 1} ` +
+          `(${cloudLabel(previous.cloud)}, dasar ${previousFt} ft). ` +
+          `Urutkan lapisan awan dari dasar terendah ke tertinggi.`
+        );
+      }
+    }
+
+    return "";
+  };
   const formatWindDir = (val: string) => {
     let c = val.toUpperCase().trim();
     if (c === "VRB" || c === "") return c;
@@ -1106,12 +1186,9 @@ export default function GeneratorPage() {
         ? parseInt(cg.visibility)
         : parseInt(eff.effVis) || 9999;
 
-    let hasCb = false;
-    if (cg.hasCloud && cg.cloudAmount !== "NSC") {
-      hasCb = cg.cloudType === "CB";
-    } else if (!cg.hasCloud) {
-      hasCb = eff.effClouds.some((c: any) => c.type === "CB");
-    }
+    const activeClouds = cg.hasCloud ? (cg.clouds ?? []) : eff.effClouds;
+
+    const hasCb = activeClouds.some((c: any) => c.type === "CB");
 
     if (checkWx.includes("TS") && !hasCb) {
       warnings.push(
@@ -1213,61 +1290,115 @@ export default function GeneratorPage() {
     return "";
   };
 
-  const validateCgCloudStrict = (
-    cAmt: string,
-    cHt: string,
-    cTyp: string,
-    effClouds: any[],
-  ) => {
-    if (!cAmt) return "";
+  const validateCgCloudLayersStrict = (cgClouds: any[], effClouds: any[]) => {
+    const rawCurrent = cgClouds ?? [];
 
-    // Cek apakah persis sama dengan sebelumnya
-    const isIdentical = effClouds.some(
-      (bc) => bc.amount === cAmt && bc.height === cHt && bc.type === cTyp,
-    );
-    if (isIdentical)
-      return "SOP Error: Awan sama persis dengan kondisi sebelumnya (tidak ada perubahan).";
-
-    // Pengecualian mutlak untuk awan konvektif
-    if (cTyp === "CB" || cTyp === "TCU") return "";
-    const baseHasCbTcu = effClouds.some(
-      (bc) => bc.type === "CB" || bc.type === "TCU",
-    );
-    if (baseHasCbTcu) return "";
-
-    const ht = parseInt(cHt) || 0;
-    const bAmt = effClouds[0]?.amount || "NSC";
-    const bHt = parseInt(effClouds[0]?.height) || 0;
-
-    let isValid = false;
-
-    const grpB = ["BKN", "OVC"];
-    const isBaseBKN_OVC = grpB.includes(bAmt);
-    const isCgBKN_OVC = grpB.includes(cAmt);
-
-    // Aturan B: Perubahan kategori (NSC/FEW/SCT <-> BKN/OVC) di bawah 1500 ft
-    if (ht < 15 || bHt < 15) {
-      if (isBaseBKN_OVC !== isCgBKN_OVC) isValid = true;
+    // Jangan validasi saat user belum selesai mengisi tinggi awan.
+    if (
+      rawCurrent.some((c: any) => c.amount && c.amount !== "NSC" && !c.height)
+    ) {
+      return "";
     }
 
-    // Aturan A: Melintasi threshold ketinggian awan (100, 200, 500, 1000, 1500 ft)
-    // HANYA BERLAKU JIKA AWAN TERSEBUT BKN / OVC
-    if (isBaseBKN_OVC || isCgBKN_OVC) {
+    const normalizeClouds = (list: any[]) =>
+      (list ?? [])
+        .filter((c: any) => c.amount && (c.amount === "NSC" || c.height))
+        .map((c: any) => ({
+          amount: c.amount,
+          height: c.amount === "NSC" ? "" : String(c.height),
+          type: c.amount === "NSC" ? "" : c.type || "",
+        }))
+        .sort((a: any, b: any) => {
+          const heightDiff =
+            (parseInt(a.height) || 0) - (parseInt(b.height) || 0);
+
+          return (
+            heightDiff ||
+            `${a.amount}${a.type}`.localeCompare(`${b.amount}${b.type}`)
+          );
+        });
+
+    const current = normalizeClouds(rawCurrent);
+    const previous = normalizeClouds(effClouds ?? []);
+
+    if (current.length === 0) return "";
+
+    if (current.some((c: any) => c.amount === "NSC") && current.length > 1) {
+      return "SOP Error: NSC tidak boleh digabung dengan lapisan awan lain.";
+    }
+
+    // Bandingkan seluruh kondisi, bukan satu lapisan saja.
+    if (JSON.stringify(current) === JSON.stringify(previous)) {
+      return "SOP Error: Seluruh lapisan awan sama persis dengan kondisi sebelumnya (tidak ada perubahan).";
+    }
+
+    // Pengecualian konvektif mengikuti logika validator lama.
+    if (current.length === 1 && current[0].amount === "NSC") {
+      return "";
+    }
+
+    if (current.some((c: any) => c.type === "CB" || c.type === "TCU")) {
+      return "";
+    }
+
+    // Referensi utama: lapisan BKN/OVC terendah;
+    // jika tidak ada, gunakan lapisan terendah.
+    const getReferenceCloud = (list: any[]) => {
+      const usable = list.filter((c: any) => c.amount !== "NSC" && c.height);
+
+      const ceilings = usable.filter((c: any) =>
+        ["BKN", "OVC"].includes(c.amount),
+      );
+
+      return [...(ceilings.length > 0 ? ceilings : usable)].sort(
+        (a: any, b: any) =>
+          (parseInt(a.height) || 0) - (parseInt(b.height) || 0),
+      )[0];
+    };
+
+    const previousRef = getReferenceCloud(previous);
+    const currentRef = getReferenceCloud(current);
+
+    if (!currentRef) return "";
+
+    const baseAmount = previousRef?.amount || "NSC";
+    const baseHeight = parseInt(previousRef?.height) || 0;
+
+    const currentAmount = currentRef.amount;
+    const currentHeight = parseInt(currentRef.height) || 0;
+
+    const groups = ["BKN", "OVC"];
+    const baseIsBknOvc = groups.includes(baseAmount);
+    const currentIsBknOvc = groups.includes(currentAmount);
+
+    // Perubahan kategori di bawah 1500 ft.
+    if (
+      (currentHeight < 15 || baseHeight < 15) &&
+      baseIsBknOvc !== currentIsBknOvc
+    ) {
+      return "";
+    }
+
+    // Perubahan threshold ketinggian signifikan.
+    if (baseIsBknOvc || currentIsBknOvc) {
       const thresholds = [1, 2, 5, 10, 15];
-      if (bHt < ht) {
-        if (thresholds.some((t) => bHt < t && t <= ht)) isValid = true;
-      } else if (bHt > ht) {
-        if (thresholds.some((t) => bHt > t && t >= ht)) isValid = true;
+
+      if (
+        baseHeight < currentHeight &&
+        thresholds.some((t) => baseHeight < t && t <= currentHeight)
+      ) {
+        return "";
+      }
+
+      if (
+        baseHeight > currentHeight &&
+        thresholds.some((t) => baseHeight > t && t >= currentHeight)
+      ) {
+        return "";
       }
     }
 
-    // Aturan Tambahan: Perubahan menjadi langit bersih
-    if (cAmt === "NSC") isValid = true;
-
-    if (!isValid)
-      return "SOP Error: Perubahan awan tidak melintasi threshold batas (100, 200, 500, 1000, 1500 ft) yang HANYA berlaku untuk awan BKN/OVC, atau tidak merubah kategori signifikan (BKN/OVC) di bawah 1500 ft.";
-
-    return "";
+    return "SOP Error: Perubahan lapisan awan tidak melintasi threshold 100, 200, 500, 1000, atau 1500 ft, dan tidak mengubah kategori BKN/OVC secara signifikan di bawah 1500 ft.";
   };
 
   // --- PROGRESSIVE WX/VIS CHECKER ---
@@ -1324,13 +1455,9 @@ export default function GeneratorPage() {
           effWindGust = cg.windGust;
         }
         if (cg.hasCloud) {
-          effClouds = [
-            {
-              amount: cg.cloudAmount,
-              height: cg.cloudHeight,
-              type: cg.cloudType,
-            },
-          ];
+          effClouds = (cg.clouds ?? []).filter(
+            (c: any) => c.amount && (c.amount === "NSC" || c.height),
+          );
         }
       }
     }
@@ -1434,10 +1561,15 @@ export default function GeneratorPage() {
         }
         if (cg.hasVis && cg.visibility) cgStr += `${cg.visibility} `;
         if (cg.hasWx && cg.wx) cgStr += `${cg.wx} `;
-        if (cg.hasCloud && cg.cloudAmount) {
-          if (cg.cloudAmount === "NSC") cgStr += "NSC ";
-          else if (cg.cloudHeight)
-            cgStr += `${cg.cloudAmount}${padCloud(cg.cloudHeight)}${cg.cloudType} `;
+        if (cg.hasCloud && cg.clouds && cg.clouds.length > 0) {
+          if (cg.clouds.length === 1 && cg.clouds[0].amount === "NSC") {
+            cgStr += "NSC ";
+          } else {
+            cg.clouds.forEach((c: any) => {
+              if (c.amount && c.height)
+                cgStr += `${c.amount}${padCloud(c.height)}${c.type} `;
+            });
+          }
         }
         if (cgStr.trim() !== "") {
           tafString += `\n${cg.indicator} ${cgStartDD}${cg.start.padStart(2, "0")}/${cgEndDD}${cg.end.padStart(2, "0")} ${cgStr.trim()} `;
@@ -1875,6 +2007,12 @@ export default function GeneratorPage() {
                       )}
                     </div>
                   ))}
+                  {validateCloudOrder(clouds) && (
+                    <div className="mt-2 text-red-600 font-medium text-xs flex items-start gap-1.5 bg-red-100 p-2 rounded border border-red-300">
+                      <AlertTriangle className="w-4 h-4 min-w-[16px]" />
+                      <span>{validateCloudOrder(clouds)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2092,52 +2230,84 @@ export default function GeneratorPage() {
                       </select>
                     )}
                     {cg.hasCloud && (
-                      <div className="col-span-2 flex gap-2">
-                        <select
-                          className="border p-1 rounded text-sm bg-white"
-                          value={cg.cloudAmount}
-                          onChange={(e) =>
-                            updateChangeGroup(
-                              idx,
-                              "cloudAmount",
-                              e.target.value,
-                            )
-                          }
-                        >
-                          <option value="">Jumlah</option>
-                          <option value="FEW">FEW</option>
-                          <option value="SCT">SCT</option>
-                          <option value="BKN">BKN</option>
-                          <option value="OVC">OVC</option>
-                          <option value="NSC">NSC</option>
-                        </select>
-                        <input
-                          type="text"
-                          placeholder="Tinggi"
-                          maxLength={3}
-                          disabled={cg.cloudAmount === "NSC"}
-                          className="w-16 border p-1 text-sm rounded disabled:bg-slate-200"
-                          value={cg.cloudHeight}
-                          onChange={(e) =>
-                            updateChangeGroup(
-                              idx,
-                              "cloudHeight",
-                              e.target.value,
-                            )
-                          }
-                        />
-                        <select
-                          disabled={cg.cloudAmount === "NSC"}
-                          className="border p-1 rounded text-sm disabled:bg-slate-200 bg-white"
-                          value={cg.cloudType}
-                          onChange={(e) =>
-                            updateChangeGroup(idx, "cloudType", e.target.value)
-                          }
-                        >
-                          <option value="">Tipe</option>
-                          <option value="CB">CB</option>
-                          <option value="TCU">TCU</option>
-                        </select>
+                      <div className="col-span-2 bg-white/50 p-2 rounded border border-indigo-100 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-semibold text-indigo-800">
+                            Lapisan Awan
+                          </span>
+                          <button
+                            onClick={() => addCgCloud(idx)}
+                            disabled={cg.clouds.length >= 4}
+                            className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 flex items-center gap-1 disabled:opacity-50"
+                          >
+                            <Plus className="w-3 h-3" /> Tambah
+                          </button>
+                        </div>
+                        {cg.clouds.map((c: any, cIdx: number) => (
+                          <div key={cIdx} className="flex gap-2 items-center">
+                            <select
+                              className="w-20 border p-1 rounded text-sm bg-white"
+                              value={c.amount}
+                              onChange={(e) =>
+                                updateCgCloud(
+                                  idx,
+                                  cIdx,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                            >
+                              <option value="">Jumlah</option>
+                              <option value="FEW">FEW</option>
+                              <option value="SCT">SCT</option>
+                              <option value="BKN">BKN</option>
+                              <option value="OVC">OVC</option>
+                              <option value="NSC">NSC</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Tinggi"
+                              maxLength={3}
+                              disabled={c.amount === "NSC"}
+                              className="w-16 border p-1 text-sm rounded disabled:bg-slate-200"
+                              value={c.height}
+                              onChange={(e) =>
+                                updateCgCloud(
+                                  idx,
+                                  cIdx,
+                                  "height",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            <select
+                              disabled={c.amount === "NSC"}
+                              className="w-16 border p-1 rounded text-sm disabled:bg-slate-200 bg-white"
+                              value={c.type}
+                              onChange={(e) =>
+                                updateCgCloud(idx, cIdx, "type", e.target.value)
+                              }
+                            >
+                              <option value="">Tipe</option>
+                              <option value="CB">CB</option>
+                              <option value="TCU">TCU</option>
+                            </select>
+                            {cIdx > 0 && (
+                              <button
+                                onClick={() => removeCgCloud(idx, cIdx)}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {validateCloudOrder(cg.clouds ?? []) && (
+                          <div className="mt-2 text-red-600 font-medium text-xs flex items-start gap-1.5 bg-red-100 p-2 rounded border border-red-300">
+                            <AlertTriangle className="w-4 h-4 min-w-[16px]" />
+                            <span>{validateCloudOrder(cg.clouds ?? [])}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2202,19 +2372,15 @@ export default function GeneratorPage() {
                       </div>
                     )}
                   {cg.hasCloud &&
-                    validateCgCloudStrict(
-                      cg.cloudAmount,
-                      cg.cloudHeight,
-                      cg.cloudType,
+                    validateCgCloudLayersStrict(
+                      cg.clouds ?? [],
                       eff.effClouds,
                     ) && (
                       <div className="mt-1 text-red-600 font-medium text-xs flex items-center gap-1 bg-red-100 p-1 rounded border border-red-300">
                         <AlertTriangle className="w-4 h-4 min-w-[16px]" />{" "}
                         <span>
-                          {validateCgCloudStrict(
-                            cg.cloudAmount,
-                            cg.cloudHeight,
-                            cg.cloudType,
+                          {validateCgCloudLayersStrict(
+                            cg.clouds ?? [],
                             eff.effClouds,
                           )}
                         </span>

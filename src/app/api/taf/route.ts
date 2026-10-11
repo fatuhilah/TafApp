@@ -41,7 +41,7 @@ export async function GET() {
   try {
     // Menggunakan pool koneksi yang sama, jauh lebih efisien!
     const [rows] = await pool.query(
-      "SELECT * FROM tafs ORDER BY created_at DESC LIMIT 50",
+      "SELECT * FROM tafs ORDER BY created_at DESC LIMIT 120",
     );
 
     return NextResponse.json({ success: true, data: rows });
