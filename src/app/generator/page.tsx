@@ -1516,7 +1516,7 @@ export default function GeneratorPage() {
       bodyType = "COR ";
     } else if (header.type === "TERLAMBAT") {
       bbbStr = ` RR${header.sequence}`;
-      bodyType = ""; // Aturan pusat: Header RRA tapi body TAF AMD
+      bodyType = "";
     }
 
     // Waktu terbit dikunci ke header.issueTime sesuai SOP Pusat terbaru
