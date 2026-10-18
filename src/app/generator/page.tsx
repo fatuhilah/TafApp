@@ -1168,6 +1168,15 @@ export default function GeneratorPage() {
       );
     }
 
+    // WARNING VV > 1000ft
+    baseClouds.forEach((c) => {
+      if (c.amount === "VV" && parseInt(c.height) > 10) {
+        warnings.push(
+          "Meteorological Warning: Apakah yakin Vertical Visibility di atas 1000ft dan tidak terdeteksi awan? Kalau yakin ya lanjut aja",
+        );
+      }
+    });
+
     return warnings;
   };
 
@@ -1221,6 +1230,15 @@ export default function GeneratorPage() {
         `Meteorological Warning (${cg.indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya disebabkan oleh kabut radiasi/embun (FG) atau hujan lebat. Yakin fenomena saat ini masih '${checkWx || "tidak ada"}'? Jika ini embun, pastikan ganti cuaca menjadi FG atau jika ini hujan lebat ganti menjadi RA/+RA/TSRA/+TSRA`,
       );
     }
+
+    // WARNING VV > 1000ft CHANGE GROUP
+    activeClouds.forEach((c: any) => {
+      if (c.amount === "VV" && parseInt(c.height) > 10) {
+        warnings.push(
+          `Meteorological Warning (${cg.indicator}): Apakah yakin Vertical Visibility di atas 1000ft dan tidak terdeteksi awan? Kalau yakin ya lanjut aja`,
+        );
+      }
+    });
 
     return warnings;
   };
@@ -1535,8 +1553,11 @@ export default function GeneratorPage() {
         tafString += "NSC ";
       else {
         clouds.forEach((c) => {
-          if (c.amount && c.height)
+          if (c.amount === "VV" && c.height) {
+            tafString += `VV${padCloud(c.height)} `;
+          } else if (c.amount && c.height) {
             tafString += `${c.amount}${padCloud(c.height)}${c.type} `;
+          }
         });
       }
     }
@@ -1568,8 +1589,11 @@ export default function GeneratorPage() {
             cgStr += "NSC ";
           } else {
             cg.clouds.forEach((c: any) => {
-              if (c.amount && c.height)
+              if (c.amount === "VV" && c.height) {
+                cgStr += `VV${padCloud(c.height)} `;
+              } else if (c.amount && c.height) {
                 cgStr += `${c.amount}${padCloud(c.height)}${c.type} `;
+              }
             });
           }
         }
@@ -1976,6 +2000,7 @@ export default function GeneratorPage() {
                         <option value="BKN">BKN</option>
                         <option value="OVC">OVC</option>
                         <option value="NSC">NSC</option>
+                        <option value="VV">VV</option>
                       </select>
                       <input
                         type="text"
@@ -2265,6 +2290,7 @@ export default function GeneratorPage() {
                               <option value="BKN">BKN</option>
                               <option value="OVC">OVC</option>
                               <option value="NSC">NSC</option>
+                              <option value="VV">VV</option>
                             </select>
                             <input
                               type="text"
