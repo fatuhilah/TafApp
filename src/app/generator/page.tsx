@@ -2013,7 +2013,7 @@ export default function GeneratorPage() {
                         }
                       />
                       <select
-                        disabled={c.amount === "NSC"}
+                        disabled={c.amount === "NSC" || c.amount === "VV"}
                         className="border p-1 rounded text-sm disabled:bg-slate-200 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
                         value={c.type}
                         onChange={(e) =>
@@ -2309,7 +2309,7 @@ export default function GeneratorPage() {
                               }
                             />
                             <select
-                              disabled={c.amount === "NSC"}
+                              disabled={c.amount === "NSC" || c.amount === "VV"}
                               className="w-16 border p-1 rounded text-sm disabled:bg-slate-200 bg-white"
                               value={c.type}
                               onChange={(e) =>
