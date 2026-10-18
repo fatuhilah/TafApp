@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { CloudRain, CheckSquare, Archive, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { CloudRain, CheckSquare, Archive, Menu, X, LogOut } from "lucide-react";
 import Chatbot from "@/components/Chatbot";
 
 export default function LayoutClient({
@@ -13,11 +13,18 @@ export default function LayoutClient({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
-  // 1. Cek apakah ini halaman login berdasarkan struktur foldermu
   const isLoginPage = pathname === "/login";
 
-  // 2. JIKA DI HALAMAN LOGIN: Render polosan tanpa Sidebar, Header Mobile, dan Chatbot
+  const handleLogout = async () => {
+    // TODO: Tambahkan logika penghapusan session/cookie di sini jika ada
+    // contoh: await fetch('/api/logout', { method: 'POST' });
+
+    setIsSidebarOpen(false);
+    router.push("/login");
+  };
+
   if (isLoginPage) {
     return (
       <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-[#1e3a8a] to-slate-900">
@@ -26,10 +33,9 @@ export default function LayoutClient({
     );
   }
 
-  // 3. JIKA BUKAN HALAMAN LOGIN (Generator/Validator/Archive): Render Layout Lengkap
   return (
     <div className="flex h-screen overflow-hidden relative">
-      {/* HEADER MOBILE (Hanya tampil di HP / < lg) */}
+      {/* HEADER MOBILE */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-blue-900 text-white flex items-center justify-between px-4 z-30 shadow-md">
         <div className="flex items-center gap-2 font-bold text-lg">
           <CloudRain className="w-6 h-6 text-blue-300" />
@@ -47,7 +53,7 @@ export default function LayoutClient({
         </button>
       </header>
 
-      {/* OVERLAY HITAM TRANSLUSEN UNTUK HP SAAT SIDEBAR BUKA */}
+      {/* OVERLAY HITAM TRANSLUSEN UNTUK HP */}
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
@@ -65,7 +71,7 @@ export default function LayoutClient({
           <CloudRain className="w-8 h-8 text-blue-300" />
           <span>TAF App</span>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 flex flex-col">
           <Link
             href="/generator"
             onClick={() => setIsSidebarOpen(false)}
@@ -85,10 +91,21 @@ export default function LayoutClient({
           <Link
             href="/archive"
             onClick={() => setIsSidebarOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-800 transition-colors border-t border-blue-800/50 mt-4 pt-4"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-800 transition-colors"
           >
-            <Archive className="w-5 h-5 text-blue-300" /> Arsip TAF
+            <Archive className="w-5 h-5" /> Arsip TAF
           </Link>
+
+          {/* TOMBOL LOGOUT */}
+          <div className="mt-auto pt-4 border-t border-blue-800/50">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 p-3 rounded-lg text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              Keluar
+            </button>
+          </div>
         </nav>
         <div className="p-4 text-xs text-blue-400 border-t border-blue-800 text-center">
           © 2026 Fatuh Hidayatullah

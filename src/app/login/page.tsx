@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { loginAction } from "./actions";
 import { Shield, Lock, ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
@@ -19,9 +20,15 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-[400px] p-8 md:p-10 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-2xl flex flex-col items-center text-center mx-4">
-      {/* Icon Shield */}
-      <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mb-5 border border-white/10 shadow-inner">
-        <Shield className="text-blue-300 w-7 h-7" />
+      {/* Logo BMKG */}
+      <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-5 border border-white/10 shadow-inner p-2.5">
+        <Image
+          src="/logo-bmkg.png"
+          alt="Logo BMKG"
+          width={50}
+          height={50}
+          className="object-contain drop-shadow-md"
+        />
       </div>
 
       {/* Judul */}
