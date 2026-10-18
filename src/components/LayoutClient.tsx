@@ -18,8 +18,8 @@ export default function LayoutClient({
   const isLoginPage = pathname === "/login";
 
   const handleLogout = async () => {
-    // TODO: Tambahkan logika penghapusan session/cookie di sini jika ada
-    // contoh: await fetch('/api/logout', { method: 'POST' });
+    // Sekarang endpoint ini sudah ada dan akan menghapus cookie login
+    await fetch("/api/logout", { method: "POST" });
 
     setIsSidebarOpen(false);
     router.push("/login");

@@ -53,17 +53,17 @@ export default function Chatbot() {
 
   return (
     <>
-      {/* Tombol Melayang */}
+      {/* Tombol Melayang - Dipindah ke Kanan Bawah (right-8) */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-8 left-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center ${isOpen ? "hidden" : "flex"}`}
+        className={`fixed bottom-8 right-8 z-[60] bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center ${isOpen ? "hidden" : "flex"}`}
       >
         <Sparkles className="w-7 h-7" />
       </button>
 
-      {/* Jendela Chat */}
+      {/* Jendela Chat - Dipindah ke Kanan Bawah (right-8) */}
       <div
-        className={`fixed bottom-8 left-8 z-50 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transition-all duration-300 transform origin-bottom-left ${isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"}`}
+        className={`fixed bottom-8 right-8 z-[60] w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transition-all duration-300 transform origin-bottom-right ${isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"}`}
         style={{ height: "500px" }}
       >
         {/* Header */}
