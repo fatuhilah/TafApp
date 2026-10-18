@@ -977,6 +977,14 @@ export default function GeneratorPage() {
   const updateCloud = (index: number, field: string, value: string) => {
     const newC = [...clouds];
     newC[index] = { ...newC[index], [field]: value };
+    if (field === "amount") {
+      if (value === "NSC") {
+        newC[index].height = "";
+        newC[index].type = "";
+      } else if (value === "VV") {
+        newC[index].type = ""; // Pastikan tipe (CB/TCU) kosong untuk VV
+      }
+    }
     setClouds(newC);
   };
 
@@ -1036,6 +1044,14 @@ export default function GeneratorPage() {
       ...newG[cgIndex].clouds[cloudIndex],
       [field]: value,
     };
+    if (field === "amount") {
+      if (value === "NSC") {
+        newG[cgIndex].clouds[cloudIndex].height = "";
+        newG[cgIndex].clouds[cloudIndex].type = "";
+      } else if (value === "VV") {
+        newG[cgIndex].clouds[cloudIndex].type = ""; // Pastikan tipe (CB/TCU) kosong untuk VV
+      }
+    }
     setChangeGroups(newG);
   };
 
