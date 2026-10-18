@@ -19,7 +19,39 @@ export default function Chatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll ke pesan terbaru
+  // State dan Ref untuk Dragging
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const dragInfo = useRef({ startX: 0, startY: 0, isDragging: false });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragInfo.current.startX = e.clientX - position.x;
+    dragInfo.current.startY = e.clientY - position.y;
+    dragInfo.current.isDragging = false;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.buttons !== 1 && e.pointerType === "mouse") return;
+
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      const newX = e.clientX - dragInfo.current.startX;
+      const newY = e.clientY - dragInfo.current.startY;
+
+      // Threshold 5px agar klik biasa tidak dianggap geser
+      if (Math.abs(newX - position.x) > 5 || Math.abs(newY - position.y) > 5) {
+        dragInfo.current.isDragging = true;
+        setPosition({ x: newX, y: newY });
+      }
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!dragInfo.current.isDragging) {
+      setIsOpen(true);
+    }
+  };
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -53,18 +85,27 @@ export default function Chatbot() {
 
   return (
     <>
-      {/* Tombol Melayang */}
-      <button
-        onClick={() => setIsOpen(true)}
-        // UBAH bottom-8 MENJADI bottom-24 DI SINI:
-        className={`fixed bottom-34 left-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95 flex items-center justify-center ${isOpen ? "hidden" : "flex"}`}
+      {/* Pembungkus Draggable Tombol Melayang */}
+      <div
+        className={`fixed bottom-34 left-8 z-50 ${isOpen ? "hidden" : "flex"}`}
+        style={{
+          transform: `translate(${position.x}px, ${position.y}px)`,
+          touchAction: "none", // Mencegah layar scroll saat digeser di HP
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
-        <Sparkles className="w-7 h-7" />
-      </button>
+        <button className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-transform active:scale-95 flex items-center justify-center cursor-grab active:cursor-grabbing">
+          {/* pointer-events-none wajib agar deteksi pointer capture tidak bocor ke SVG */}
+          <Sparkles className="w-7 h-7 pointer-events-none" />
+        </button>
+      </div>
 
       {/* Jendela Chat */}
       <div
-        className={`fixed bottom-35 left-8 z-[50] w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transition-all duration-300 transform origin-bottom-right ${isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"}`}
+        className={`fixed bottom-35 left-8 z-[50] w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transition-all duration-300 transform origin-bottom-left ${isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"}`}
         style={{ height: "500px" }}
       >
         {/* Header */}
@@ -88,7 +129,6 @@ export default function Chatbot() {
               key={idx}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              {/* Pembungkus Bubble Chat dengan batas maksimal lebar dan break-words */}
               <div
                 className={`max-w-[90%] p-3.5 rounded-2xl shadow-sm break-words overflow-hidden ${
                   msg.role === "user"
@@ -96,7 +136,6 @@ export default function Chatbot() {
                     : "bg-white border border-slate-200 text-slate-800 rounded-bl-none"
                 }`}
               >
-                {/* Teks Markdown di dalamnya */}
                 <div
                   className={`prose prose-sm leading-relaxed max-w-none ${msg.role === "user" ? "prose-invert" : "prose-blue"}`}
                 >
