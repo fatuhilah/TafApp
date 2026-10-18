@@ -805,11 +805,12 @@ export default function ValidatorPage() {
         checkVis < 1000 &&
         !checkWx.includes("FG") &&
         !checkWx.includes("RA") &&
+        !checkWx.includes("FU") &&
         !checkWx.includes("TS")
       ) {
         warnings.push({
           type: "warning",
-          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG) atau hujan lebat. Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG. Jika ini hujan lebat, pastikan ganti cuacanya menjadi RA/+RA/TSRA/+TSRA. Kalau yakin ya lanjut aja.`,
+          message: `Meteorological Warning (${indicator}): Visibilitas anjlok hingga ${checkVis}m. Umumnya jarak pandang di bawah 1000m disebabkan oleh kabut radiasi/embun (FG), asap (FU), atau hujan lebat. Yakin fenomena saat ini masih '${checkWx || "tidak ada"}' bawaan dari kondisi sebelumnya? Jika ini embun pagi, pastikan ganti cuacanya menjadi FG. Jika ini hujan lebat, pastikan ganti cuacanya menjadi RA/+RA/TSRA/+TSRA. Jika ini asap, pastikan ganti cuacanya menjadi FU. Kalau yakin ya lanjut aja.`,
         });
       }
 
