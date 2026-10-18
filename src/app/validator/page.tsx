@@ -34,14 +34,22 @@ export default function ValidatorPage() {
       sectionContent: string,
       sectionLabel: string,
     ) => {
-      const cloudRegex = /\b(FEW|SCT|BKN|OVC)(\d{3})(CB|TCU)?\b/g;
-      const cloudGroups: { code: string; height: number }[] = [];
+      const cloudRegex = /\b(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?\b/g;
+      const cloudGroups: { code: string; height: number; amt: string }[] = [];
       let match: RegExpExecArray | null;
 
       while ((match = cloudRegex.exec(sectionContent)) !== null) {
         cloudGroups.push({
           code: match[0],
           height: parseInt(match[2], 10),
+          amt: match[1],
+        });
+      }
+
+      if (cloudGroups.some((c) => c.amt === "VV") && cloudGroups.length > 1) {
+        errors.push({
+          type: "error",
+          message: `SOP Error (${sectionLabel}): VV (Vertical Visibility) tidak boleh digabung dengan lapisan awan lain.`,
         });
       }
 
@@ -166,7 +174,7 @@ export default function ValidatorPage() {
       if (/^\d{4}\/\d{4}$/.test(t)) continue; // Format Validitas
       if (/^(VRB|\d{3})\d{2}(G\d{2})?KT$/.test(t)) continue; // Format Angin
       if (/^\d{4}$/.test(t)) continue; // Format Visibilitas
-      if (/^(FEW|SCT|BKN|OVC)\d{3}(CB|TCU)?$/.test(t)) continue; // Format Awan
+      if (/^(FEW|SCT|BKN|OVC|VV)\d{3}(CB|TCU)?$/.test(t)) continue; // Format Awan
       if (/^(TX|TN)\d{2}\/\d{4}Z$/.test(t)) continue; // Toleransi format Suhu (TX/TN) jika ada
 
       // Jika sampai di sini, kata tersebut BUKAN sandi standar.
@@ -331,7 +339,7 @@ export default function ValidatorPage() {
     }
 
     const cloudMatches = mainSafeContent.match(
-      /\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b/,
+      /\b(FEW|SCT|BKN|OVC|VV)(\d{3})(?:CB|TCU)?\b/,
     );
     let mainCloud = { amt: "NSC", hgt: 0, typ: "" };
     if (cloudMatches) {
@@ -342,6 +350,20 @@ export default function ValidatorPage() {
         : mainSafeContent.includes("TCU")
           ? "TCU"
           : "";
+    }
+
+    // WARNING: Jika ada VV di atas 1000 ft pada Base Condition
+    const allMainClouds = mainSafeContent.match(/\bVV(\d{3})\b/g);
+    if (allMainClouds) {
+      allMainClouds.forEach((c) => {
+        const hgt = parseInt(c.replace("VV", ""));
+        if (hgt > 10) {
+          warnings.push({
+            type: "warning",
+            message: `Meteorological Warning (Utama): Apakah yakin Vertical Visibility di atas 1000ft (${c}) dan tidak terdeteksi awan? Kalau yakin ya lanjut aja.`,
+          });
+        }
+      });
     }
 
     // --- TAMBAHAN: VALIDASI KELENGKAPAN BASE CONDITION (MANDATORY) ---
@@ -360,7 +382,7 @@ export default function ValidatorPage() {
 
       // Cek apakah sandi awan atau NSC benar-benar diketik
       const hasMainCloudToken =
-        /\b(FEW|SCT|BKN|OVC)\d{3}(?:CB|TCU)?\b/.test(mainSafeContent) ||
+        /\b(FEW|SCT|BKN|OVC|VV)\d{3}(?:CB|TCU)?\b/.test(mainSafeContent) ||
         mainSafeContent.includes("NSC");
       if (!hasMainCloudToken) {
         errors.push({
@@ -663,7 +685,7 @@ export default function ValidatorPage() {
 
       // Evaluasi Awan dibandingkan dengan EFFECTIVE CLOUD
       const cgCloudMatch = cgSafeContent.match(
-        /\b(FEW|SCT|BKN|OVC)(\d{3})(?:CB|TCU)?\b/,
+        /\b(FEW|SCT|BKN|OVC|VV)(\d{3})(?:CB|TCU)?\b/,
       );
       let cgAmt = "NSC",
         cgHgt = 0,
@@ -692,6 +714,8 @@ export default function ValidatorPage() {
           if (cgTyp === "CB" || cgTyp === "TCU") isValid = true;
           else if (effCloud.typ === "CB" || effCloud.typ === "TCU")
             isValid = true;
+          else if (cgAmt === "VV" || effCloud.amt === "VV") isValid = true;
+          isValid = true;
 
           if (!isValid) {
             const grpB = ["BKN", "OVC"];
@@ -730,6 +754,19 @@ export default function ValidatorPage() {
         cgAmt = "NSC";
         cgHgt = 0;
         cgTyp = "";
+      }
+
+      const allCgClouds = cgSafeContent.match(/\bVV(\d{3})\b/g);
+      if (allCgClouds) {
+        allCgClouds.forEach((c) => {
+          const hgt = parseInt(c.replace("VV", ""));
+          if (hgt > 10) {
+            warnings.push({
+              type: "warning",
+              message: `Meteorological Warning (${indicator}): Apakah yakin Vertical Visibility di atas 1000ft (${c}) dan tidak terdeteksi awan? Kalau yakin ya lanjut aja.`,
+            });
+          }
+        });
       }
 
       // --- LOGIKA WARNING: METEOROLOGIS (CHANGE GROUP) ---
