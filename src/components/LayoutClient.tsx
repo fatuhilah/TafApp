@@ -19,7 +19,28 @@ export default function LayoutClient({
 
   // 2. JIKA DI HALAMAN LOGIN: Render polosan tanpa Sidebar, Header Mobile, dan Chatbot
   if (isLoginPage) {
-    return <main className="min-h-screen w-full bg-slate-50">{children}</main>;
+    return (
+      <main className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        {/* Dekorasi Bulatan Blur (Blobs) - Menganimasikan pergerakan sistem cuaca */}
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-400/30 rounded-full mix-blend-multiply filter blur-[120px] animate-pulse"></div>
+        <div
+          className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/30 rounded-full mix-blend-multiply filter blur-[100px] animate-pulse"
+          style={{ animationDelay: "2s" }}
+        ></div>
+        <div
+          className="absolute top-[20%] right-[15%] w-[300px] h-[300px] bg-sky-300/40 rounded-full mix-blend-multiply filter blur-[90px] animate-pulse"
+          style={{ animationDelay: "4s" }}
+        ></div>
+
+        {/* Layer Pola Titik (Dotted Grid) untuk kesan Tech/Radar Cuaca */}
+        <div className="absolute inset-0 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:24px_24px] opacity-30"></div>
+
+        {/* Konten Utama (Card Login) */}
+        <div className="relative z-10 w-full flex justify-center p-4">
+          {children}
+        </div>
+      </main>
+    );
   }
 
   // 3. JIKA BUKAN HALAMAN LOGIN (Generator/Validator/Archive): Render Layout Lengkap
