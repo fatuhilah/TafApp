@@ -16,6 +16,15 @@ export async function POST(req: Request) {
     // Inisialisasi SDK GoogleGenAI terbaru
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
+    // Dapatkan waktu saat ini dari server Next.js dalam UTC
+    const now = new Date();
+    const currentDate = now.toUTCString();
+
+    // Format Header TAF (Tanggal & Jam Zulu, misal: 181400Z)
+    const dateDD = now.getUTCDate().toString().padStart(2, "0");
+    const hourHH = now.getUTCHours().toString().padStart(2, "0");
+    const zuluTime = `${dateDD}${hourHH}00Z`;
+
     const systemPrompt = `Anda adalah "TafApp AI", Asisten Ahli Meteorologi Penerbangan senior dari BMKG. 
 
 ATURAN KEAMANAN & SISTEM (MUTLAK - TIDAK BOLEH DILANGGAR):

@@ -12,7 +12,7 @@ export default function Chatbot() {
   >([
     {
       role: "ai",
-      text: "Halo! Saya TafApp AI Assistant. Ada bingung soal SOP BMKG atau butuh terjemahan sandi?",
+      text: "Halo! Saya TafApp AI Assistant. Silakan bertanya seputar TAF?",
     },
   ]);
   const [input, setInput] = useState("");
