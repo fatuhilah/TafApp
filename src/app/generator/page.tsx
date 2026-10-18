@@ -1363,6 +1363,10 @@ export default function GeneratorPage() {
       return "SOP Error: NSC tidak boleh digabung dengan lapisan awan lain.";
     }
 
+    if (current.some((c: any) => c.amount === "VV") && current.length > 1) {
+      return "SOP Error: VV (Vertical Visibility) tidak boleh digabung dengan lapisan awan lain.";
+    }
+
     // Bandingkan seluruh kondisi, bukan satu lapisan saja.
     if (JSON.stringify(current) === JSON.stringify(previous)) {
       return "SOP Error: Seluruh lapisan awan sama persis dengan kondisi sebelumnya (tidak ada perubahan).";
@@ -1373,7 +1377,15 @@ export default function GeneratorPage() {
       return "";
     }
 
-    if (current.some((c: any) => c.type === "CB" || c.type === "TCU")) {
+    if (
+      current.some(
+        (c: any) => c.type === "CB" || c.type === "TCU" || c.amount === "VV",
+      )
+    ) {
+      return "";
+    }
+
+    if (previous.some((c: any) => c.amount === "VV")) {
       return "";
     }
 
