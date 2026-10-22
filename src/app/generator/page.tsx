@@ -922,6 +922,7 @@ export default function GeneratorPage() {
   };
 
   // Fungsi utama untuk nembak ke Database (Dipanggil kalau aman / kalau user klik 'Ya' di modal)
+  // Fungsi utama untuk nembak ke Database (Dipanggil kalau aman / kalau user klik 'Ya' di modal)
   const executeSave = async () => {
     setShowConfirmModal(false); // Tutup modal dulu
 
@@ -931,6 +932,43 @@ export default function GeneratorPage() {
       return showToast("Sandi tidak valid.", "error");
 
     try {
+      // --- 1. CEK DUPLIKASI KE ARSIP (PRE-CHECK) ---
+      const checkRes = await fetch("/api/taf");
+      const checkResult = await checkRes.json();
+
+      if (checkResult.success) {
+        // Ambil komponen tanggal dari input header (format: YYYY-MM-DD)
+        const [currYear, currMonth, currDay] = header.date.split("-");
+
+        const isDuplicate = checkResult.data.some((taf: any) => {
+          // Ambil komponen tanggal dari database
+          const dateObj = new Date(taf.created_at || Date.now());
+          const dbDay = dateObj.getDate().toString().padStart(2, "0");
+          const dbMonth = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+          const dbYear = dateObj.getFullYear().toString();
+
+          // Bandingkan semua parameter unik
+          return (
+            taf.icao_code === header.icao &&
+            taf.type === header.type &&
+            taf.issue_time === issueTimeMatch[1] &&
+            taf.validity === validityMatch[1] &&
+            dbDay === currDay &&
+            dbMonth === currMonth &&
+            dbYear === currYear
+          );
+        });
+
+        if (isDuplicate) {
+          return showToast(
+            "Gagal simpan! Sandi TAF dengan tanggal, ICAO, heading, dan validitas yang sama sudah ada di arsip.",
+            "error",
+          );
+        }
+      }
+      // --- AKHIR CEK DUPLIKASI ---
+
+      // --- 2. EKSEKUSI SIMPAN JIKA TIDAK ADA DUPLIKAT ---
       const response = await fetch("/api/taf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -982,7 +1020,7 @@ export default function GeneratorPage() {
         newC[index].height = "";
         newC[index].type = "";
       } else if (value === "VV") {
-        newC[index].type = ""; // Pastikan tipe (CB/TCU) kosong untuk VV
+        newC[index].type = "";
       }
     }
     setClouds(newC);
@@ -1049,7 +1087,7 @@ export default function GeneratorPage() {
         newG[cgIndex].clouds[cloudIndex].height = "";
         newG[cgIndex].clouds[cloudIndex].type = "";
       } else if (value === "VV") {
-        newG[cgIndex].clouds[cloudIndex].type = ""; // Pastikan tipe (CB/TCU) kosong untuk VV
+        newG[cgIndex].clouds[cloudIndex].type = "";
       }
     }
     setChangeGroups(newG);
